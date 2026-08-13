@@ -1,12 +1,15 @@
 import { PALETTE, blockInfo } from '../world/blockIds';
 import { makeBlockIcon } from '../render/textures';
+import { makeItemIcon } from '../render/itemTextures';
+import type { ItemStack } from '../survival/inventory';
+import { itemInfo } from '../survival/items';
 import { el } from './dom';
 
 const HOTBAR_SIZE = 9;
 
-/** HUD：准星、热栏、聊天、玩家列表、状态、方块选择器 */
+/** HUD：准星、热栏（物品/方块）、生命/饥饿、聊天、玩家列表、状态、创造方块选择器 */
 export class Hud {
-  private hotbar: number[];
+  private hotbar: number[] = PALETTE.slice(0, HOTBAR_SIZE);
   private slotEls: HTMLElement[] = [];
   private selected = 0;
   private chatLog: HTMLElement;
@@ -18,7 +21,6 @@ export class Hud {
   onChatSubmit: ((text: string) => void) | null = null;
 
   constructor() {
-    this.hotbar = PALETTE.slice(0, HOTBAR_SIZE);
     this.chatLog = el('chat-log');
     this.chatInput = el<HTMLInputElement>('chat-input');
     this.chatWrap = el('chat-input-wrap');
@@ -31,7 +33,13 @@ export class Hud {
       slot.className = 'slot';
       const img = document.createElement('img');
       img.alt = '';
+      const count = document.createElement('span');
+      count.className = 'count';
+      const dur = document.createElement('div');
+      dur.className = 'dur';
       slot.appendChild(img);
+      slot.appendChild(count);
+      slot.appendChild(dur);
       slot.addEventListener('click', () => this.selectSlot(i));
       bar.appendChild(slot);
       this.slotEls.push(slot);
@@ -62,11 +70,64 @@ export class Hud {
     this.selectSlot(this.selected + (dir > 0 ? 1 : -1));
   }
 
+  getSelected(): number {
+    return this.selected;
+  }
+
+  /** 生存模式：用物品栈渲染热栏 */
+  setHotbarStacks(stacks: ItemStack[]): void {
+    this.slotEls.forEach((slotEl, i) => {
+      slotEl.classList.toggle('sel', i === this.selected);
+      const img = slotEl.querySelector('img') as HTMLImageElement;
+      const count = slotEl.querySelector('.count') as HTMLElement;
+      const dur = slotEl.querySelector('.dur') as HTMLElement;
+      const s = stacks[i];
+      if (s && s.id > 0 && s.count > 0) {
+        img.src = makeItemIcon(s.id).toDataURL();
+        img.style.display = '';
+        count.textContent = s.count > 1 ? String(s.count) : '';
+        const maxDur = itemInfo(s.id).tool?.durability ?? 0;
+        if (maxDur > 0) {
+          dur.style.display = '';
+          dur.style.width = ((s.durability / maxDur) * 100).toFixed(0) + '%';
+        } else {
+          dur.style.display = 'none';
+        }
+      } else {
+        img.style.display = 'none';
+        count.textContent = '';
+        dur.style.display = 'none';
+      }
+    });
+  }
+
+  /** 创造模式：方块图标热栏 */
+  setHotbarBlocks(): void {
+    this.slotEls.forEach((slotEl, i) => {
+      slotEl.classList.toggle('sel', i === this.selected);
+      const img = slotEl.querySelector('img') as HTMLImageElement;
+      const count = slotEl.querySelector('.count') as HTMLElement;
+      const dur = slotEl.querySelector('.dur') as HTMLElement;
+      img.src = makeBlockIcon(this.hotbar[i]).toDataURL();
+      img.style.display = '';
+      count.textContent = '';
+      dur.style.display = 'none';
+    });
+  }
+
+  /** 生命/饥饿条 */
+  setBars(health: number, hunger: number): void {
+    const h = Math.max(0, Math.min(20, Math.round(health)));
+    const g = Math.max(0, Math.min(20, Math.round(hunger)));
+    el('hearts').textContent = '❤'.repeat(Math.ceil(h / 2));
+    el('hearts-empty').textContent = '🖤'.repeat(10 - Math.ceil(h / 2));
+    el('hunger').textContent = '🍗'.repeat(Math.ceil(g / 2));
+    el('hunger-empty').textContent = '🖤'.repeat(10 - Math.ceil(g / 2));
+  }
+
   private renderSlots(): void {
     this.slotEls.forEach((slotEl, i) => {
       slotEl.classList.toggle('sel', i === this.selected);
-      const icon = slotEl.querySelector('img');
-      if (icon) icon.src = makeBlockIcon(this.hotbar[i]).toDataURL();
     });
   }
 
@@ -144,7 +205,7 @@ export class Hud {
       item.appendChild(img);
       item.addEventListener('click', () => {
         this.hotbar[this.selected] = id;
-        this.renderSlots();
+        this.setHotbarBlocks();
         this.closePicker();
       });
       grid.appendChild(item);

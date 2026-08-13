@@ -1,4 +1,4 @@
-/** 方块 ID 注册表（v1，约 20 种，原创 1.12 风格） */
+/** 方块 ID 注册表（v2，含生存模式矿石/熔炉/工作台） */
 export const enum Block {
   Air = 0,
   Grass = 1,
@@ -21,6 +21,15 @@ export const enum Block {
   WoolBlue = 18,
   WoolGreen = 19,
   WoolYellow = 20,
+  CoalOre = 21,
+  IronOre = 22,
+  GoldOre = 23,
+  DiamondOre = 24,
+  RedstoneOre = 25,
+  LapisOre = 26,
+  Furnace = 27,
+  FurnaceLit = 28,
+  CraftingTable = 29,
 }
 
 /** 纹理图集槽位（16×16 图集） */
@@ -47,20 +56,32 @@ export const enum Tex {
   WoolBlue = 19,
   WoolGreen = 20,
   WoolYellow = 21,
+  CoalOre = 22,
+  IronOre = 23,
+  GoldOre = 24,
+  DiamondOre = 25,
+  RedstoneOre = 26,
+  LapisOre = 27,
+  FurnaceFront = 28,
+  FurnaceFrontActive = 29,
+  FurnaceSide = 30,
+  FurnaceTop = 31,
+  CraftingTable = 32,
 }
 
 export interface BlockInfo {
   readonly id: number;
   readonly name: string;
-  readonly solid: boolean; // 参与碰撞
-  readonly opaque: boolean; // 遮挡相邻面
+  readonly solid: boolean;
+  readonly opaque: boolean;
   readonly liquid: boolean;
   readonly texTop: number;
   readonly texSide: number;
   readonly texBottom: number;
+  readonly texFront: number;
 }
 
-type BlockOpts = Partial<Pick<BlockInfo, 'solid' | 'opaque' | 'liquid' | 'texTop' | 'texSide' | 'texBottom'>>;
+type BlockOpts = Partial<Pick<BlockInfo, 'solid' | 'opaque' | 'liquid' | 'texTop' | 'texSide' | 'texBottom' | 'texFront'>>;
 
 function B(id: number, name: string, tex: number, opts: BlockOpts = {}): BlockInfo {
   return {
@@ -72,6 +93,7 @@ function B(id: number, name: string, tex: number, opts: BlockOpts = {}): BlockIn
     texTop: opts.texTop ?? tex,
     texSide: opts.texSide ?? tex,
     texBottom: opts.texBottom ?? tex,
+    texFront: opts.texFront ?? tex,
   };
 }
 
@@ -97,6 +119,15 @@ export const BLOCKS: readonly BlockInfo[] = [
   B(Block.WoolBlue, '蓝色羊毛', Tex.WoolBlue),
   B(Block.WoolGreen, '绿色羊毛', Tex.WoolGreen),
   B(Block.WoolYellow, '黄色羊毛', Tex.WoolYellow),
+  B(Block.CoalOre, '煤矿石', Tex.CoalOre),
+  B(Block.IronOre, '铁矿石', Tex.IronOre),
+  B(Block.GoldOre, '金矿石', Tex.GoldOre),
+  B(Block.DiamondOre, '钻石矿石', Tex.DiamondOre),
+  B(Block.RedstoneOre, '红石矿石', Tex.RedstoneOre),
+  B(Block.LapisOre, '青金石矿石', Tex.LapisOre),
+  B(Block.Furnace, '熔炉', Tex.FurnaceSide, { texTop: Tex.FurnaceTop, texBottom: Tex.Stone, texFront: Tex.FurnaceFront }),
+  B(Block.FurnaceLit, '熔炉(燃烧)', Tex.FurnaceSide, { texTop: Tex.FurnaceTop, texBottom: Tex.Stone, texFront: Tex.FurnaceFrontActive }),
+  B(Block.CraftingTable, '工作台', Tex.CraftingTable),
 ];
 
 export function blockInfo(id: number): BlockInfo {
@@ -109,11 +140,13 @@ export function isOpaque(id: number): boolean {
   return blockInfo(id).opaque;
 }
 
-/** HUD 可建造方块调色板（按序号排列） */
+/** HUD 可建造方块调色板（创造模式作弊用；按序号排列） */
 export const PALETTE: readonly number[] = [
   Block.Grass, Block.Stone, Block.Cobblestone, Block.Sand, Block.Log,
   Block.Planks, Block.Glass, Block.Brick, Block.Glowstone,
   Block.Dirt, Block.Gravel, Block.Snow, Block.Leaves,
   Block.WoolWhite, Block.WoolRed, Block.WoolBlue, Block.WoolGreen, Block.WoolYellow,
   Block.Water,
+  Block.CoalOre, Block.IronOre, Block.GoldOre, Block.DiamondOre, Block.RedstoneOre, Block.LapisOre,
+  Block.Furnace, Block.CraftingTable,
 ];

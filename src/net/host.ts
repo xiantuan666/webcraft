@@ -1,6 +1,6 @@
 import Peer from 'peerjs';
 import type { DataConnection } from 'peerjs';
-import type { NetMessage, PlayerStateMsg, RemotePlayerInfo, VillagerInfo, WelcomeMsg, WireDiff } from './protocol';
+import type { DropData, GameMode, NetMessage, PlayerStateMsg, RemotePlayerInfo, VillagerInfo, WelcomeMsg, WireDiff } from './protocol';
 
 export interface WorldInfo {
   seed: number;
@@ -15,15 +15,17 @@ export interface HostProvider {
   getDiffs(): WireDiff[];
   getPlayers(): RemotePlayerInfo[];
   getVillagers(): VillagerInfo[];
+  getMode(): GameMode;
   getHostName(): string;
 }
 
 export interface HostEvents {
   onGuestJoin(id: string, name: string): void;
   onGuestLeave(id: string): void;
-  onBlockSet(x: number, y: number, z: number, id: number): void;
+  onBlockSet(x: number, y: number, z: number, id: number, dropItem?: number, dropCount?: number): void;
   onPlayerState(s: PlayerStateMsg): void;
   onChat(name: string, text: string): void;
+  onDropPickup(id: string, playerId: string): void;
   onError(msg: string): void;
 }
 
@@ -85,12 +87,14 @@ export class Host {
         this.events.onGuestJoin(guestId, msg.name);
         this.broadcast({ t: 'join', id: guestId, name: msg.name } satisfies NetMessage);
       } else if (msg.t === 'blockSet') {
-        this.events.onBlockSet(msg.x, msg.y, msg.z, msg.id);
+        this.events.onBlockSet(msg.x, msg.y, msg.z, msg.id, msg.dropItem, msg.dropCount);
         this.broadcast(msg, conn.peer);
       } else if (msg.t === 'playerState') {
         const s: PlayerStateMsg = { ...msg, id: conn.peer };
         this.events.onPlayerState(s);
         this.broadcast(s, conn.peer);
+      } else if (msg.t === 'dropPickup') {
+        this.events.onDropPickup(msg.id, conn.peer);
       } else if (msg.t === 'chat') {
         this.events.onChat(msg.name, msg.text);
         this.broadcast({ t: 'chat', id: conn.peer, name: msg.name, text: msg.text } satisfies NetMessage, conn.peer);
@@ -111,6 +115,7 @@ export class Host {
       spawn: info.spawn,
       players: this.provider.getPlayers(),
       villagers: this.provider.getVillagers(),
+      mode: this.provider.getMode(),
       diffs: this.provider.getDiffs(),
     };
   }
@@ -123,6 +128,14 @@ export class Host {
     for (const [id, conn] of this.conns) {
       if (id !== except && conn.open) conn.send(msg);
     }
+  }
+
+  broadcastDropSpawn(drop: DropData): void {
+    this.broadcast({ t: 'dropSpawn', drop } satisfies NetMessage);
+  }
+
+  broadcastDropRemove(id: string): void {
+    this.broadcast({ t: 'dropRemove', id } satisfies NetMessage);
   }
 
   /** 广播房主自己的状态给所有访客 */

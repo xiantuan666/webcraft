@@ -90,6 +90,7 @@ function faceSlot(id: number, faceIndex: number): number {
   switch (faceIndex) {
     case 2: return info.texTop;
     case 3: return info.texBottom;
+    case 4: return info.texFront; // +Z 前面
     default: return info.texSide;
   }
 }

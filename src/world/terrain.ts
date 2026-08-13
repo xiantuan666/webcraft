@@ -64,6 +64,44 @@ export function generateWorld(world: World, config: WorldConfig): void {
     }
   }
 
+
+/** pass 4: 矿石生成（确定性，按区块矿脉，只替换石头） */
+function placeOres(world: World, config: WorldConfig): void {
+  const { size, seed } = config;
+  const chunkCount = size / 16;
+  for (let cz = 0; cz < chunkCount; cz++) {
+    for (let cx = 0; cx < chunkCount; cx++) {
+      const rng = mulberry32((seed ^ Math.imul(cx + 1, 0x9e3779b9) ^ Math.imul(cz + 1, 0x85ebca6b)) >>> 0);
+      placeVein(world, cx, cz, rng, Block.CoalOre, 0, 96, 12, 4, 8);
+      placeVein(world, cx, cz, rng, Block.IronOre, 0, 64, 6, 4, 6);
+      placeVein(world, cx, cz, rng, Block.GoldOre, 0, 32, 2, 3, 5);
+      placeVein(world, cx, cz, rng, Block.LapisOre, 0, 32, 2, 4, 6);
+      placeVein(world, cx, cz, rng, Block.RedstoneOre, 0, 16, 4, 4, 6);
+      placeVein(world, cx, cz, rng, Block.DiamondOre, 0, 16, 1, 3, 6);
+    }
+  }
+}
+
+function placeVein(world: World, cx: number, cz: number, rng: () => number, ore: number, minY: number, maxY: number, veins: number, minSize: number, maxSize: number): void {
+  for (let v = 0; v < veins; v++) {
+    let x = cx * 16 + Math.floor(rng() * 16);
+    let y = minY + Math.floor(rng() * (maxY - minY + 1));
+    let z = cz * 16 + Math.floor(rng() * 16);
+    const size = minSize + Math.floor(rng() * (maxSize - minSize + 1));
+    for (let i = 0; i < size; i++) {
+      if (world.getBlock(x, y, z) === Block.Stone) world.setBlockDirect(x, y, z, ore);
+      x += Math.floor(rng() * 3) - 1;
+      y += Math.floor(rng() * 3) - 1;
+      z += Math.floor(rng() * 3) - 1;
+      x = Math.max(0, Math.min(world.config.size - 1, x));
+      y = Math.max(1, Math.min(world.config.height - 1, y));
+      z = Math.max(0, Math.min(world.config.size - 1, z));
+    }
+  }
+}
+
+  placeOres(world, config);
+
   // pass 3: 树（确定性稀疏放置）
   const margin = 2;
   for (let z = margin; z < size - margin; z++) {

@@ -25,6 +25,13 @@ import woolRedUrl from '../assets/textures/18_wool_red.png';
 import woolBlueUrl from '../assets/textures/19_wool_blue.png';
 import woolGreenUrl from '../assets/textures/20_wool_green.png';
 import woolYellowUrl from '../assets/textures/21_wool_yellow.png';
+import coalOreUrl from '../assets/textures/22_coal_ore.png';
+import goldOreUrl from '../assets/textures/24_gold_ore.png';
+import diamondOreUrl from '../assets/textures/25_diamond_ore.png';
+import furnaceFrontUrl from '../assets/textures/28_furnace_front.png';
+import furnaceFrontActiveUrl from '../assets/textures/29_furnace_front_active.png';
+import furnaceSideUrl from '../assets/textures/30_furnace_side.png';
+import furnaceTopUrl from '../assets/textures/31_furnace_top.png';
 import villagerFaceUrl from '../assets/villager_face.jpg';
 
 
@@ -42,13 +49,15 @@ export function getVillagerFaceTexture(): THREE.Texture | null {
 export const TILE = 16;
 export const ATLAS_TILES = 16;
 export const ATLAS_SIZE = TILE * ATLAS_TILES;
-const TEX_COUNT = 22;
+const TEX_COUNT = 33;
 
 const TEXTURE_URLS: (string | null)[] = [
   grassTopUrl, grassSideUrl, dirtUrl, stoneUrl, cobbleUrl, sandUrl, waterUrl,
   logSideUrl, logTopUrl, leavesUrl, planksUrl, glassUrl, bedrockUrl, brickUrl,
   glowstoneUrl, gravelUrl, snowUrl, woolWhiteUrl, woolRedUrl, woolBlueUrl,
   woolGreenUrl, woolYellowUrl,
+  coalOreUrl, null, goldOreUrl, diamondOreUrl, null, null,
+  furnaceFrontUrl, furnaceFrontActiveUrl, furnaceSideUrl, furnaceTopUrl, null,
 ];
 
 let atlasCanvas: HTMLCanvasElement | null = null;
@@ -244,6 +253,49 @@ function paintTile(ctx: CanvasRenderingContext2D, slot: number): void {
     case Tex.WoolBlue: noise(ctx, ox, oy, rng, [50, 80, 180], 10); break;
     case Tex.WoolGreen: noise(ctx, ox, oy, rng, [80, 160, 60], 10); break;
     case Tex.WoolYellow: noise(ctx, ox, oy, rng, [220, 190, 40], 10); break;
+    case Tex.IronOre: {
+      noise(ctx, ox, oy, rng, [125, 125, 125], 10);
+      for (let i = 0; i < 18; i++) {
+        const x = Math.floor(rng() * TILE), y = Math.floor(rng() * TILE);
+        px(ctx, ox + x, oy + y, 200, 150, 110);
+        px(ctx, ox + x, oy + y, 150, 95, 60);
+      }
+      break;
+    }
+    case Tex.RedstoneOre: {
+      noise(ctx, ox, oy, rng, [125, 125, 125], 10);
+      for (let i = 0; i < 16; i++) {
+        const x = Math.floor(rng() * TILE), y = Math.floor(rng() * TILE);
+        px(ctx, ox + x, oy + y, 220, 40, 30);
+      }
+      break;
+    }
+    case Tex.LapisOre: {
+      noise(ctx, ox, oy, rng, [125, 125, 125], 10);
+      for (let i = 0; i < 16; i++) {
+        const x = Math.floor(rng() * TILE), y = Math.floor(rng() * TILE);
+        px(ctx, ox + x, oy + y, 30, 60, 180);
+      }
+      break;
+    }
+    case Tex.CraftingTable: {
+      noise(ctx, ox, oy, rng, [163, 132, 89], 10);
+      for (let y = 0; y < TILE; y += 4) {
+        for (let x = 0; x < TILE; x++) px(ctx, ox + x, oy + y, 120, 95, 62);
+      }
+      // 边框 + 十字分割
+      for (let i = 0; i < TILE; i++) {
+        px(ctx, ox + i, oy, 90, 70, 45);
+        px(ctx, ox + i, oy + TILE - 1, 90, 70, 45);
+        px(ctx, ox, oy + i, 90, 70, 45);
+        px(ctx, ox + TILE - 1, oy + i, 90, 70, 45);
+      }
+      for (let i = 0; i < TILE; i++) {
+        px(ctx, ox + 7, oy + i, 100, 78, 50);
+        px(ctx, ox + i, oy + 7, 100, 78, 50);
+      }
+      break;
+    }
     default: {
       noise(ctx, ox, oy, rng, [180, 80, 220], 30);
       break;
@@ -255,7 +307,7 @@ function buildAtlasCanvas(): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = ATLAS_SIZE;
   canvas.height = ATLAS_SIZE;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('无法创建 Canvas 2D 上下文');
   ctx.clearRect(0, 0, ATLAS_SIZE, ATLAS_SIZE);
   for (let slot = 0; slot < TEX_COUNT; slot++) paintTile(ctx, slot);
@@ -308,6 +360,26 @@ export function initTextures(): Promise<void> {
   });
 }
 
+
+const blockColorCache = new Map<number, number>();
+
+/** 采样方块贴图中心颜色（粒子用） */
+export function blockColor(id: number): number {
+  const cached = blockColorCache.get(id);
+  if (cached != null) return cached;
+  const info = blockInfo(id);
+  const canvas = getAtlasCanvas();
+  const ctx = canvas.getContext('2d');
+  let color = 0x888888;
+  if (ctx) {
+    const col = info.texSide % ATLAS_TILES;
+    const row = Math.floor(info.texSide / ATLAS_TILES);
+    const d = ctx.getImageData(col * TILE + 8, row * TILE + 8, 1, 1).data;
+    color = (d[0] << 16) | (d[1] << 8) | d[2];
+  }
+  blockColorCache.set(id, color);
+  return color;
+}
 export function getAtlasCanvas(): HTMLCanvasElement {
   return ensureAtlasCanvas();
 }

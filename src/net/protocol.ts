@@ -1,17 +1,31 @@
 export const PROTOCOL_VERSION = 1;
 
+export type GameMode = 'creative' | 'survival';
+
 export interface RemotePlayerInfo {
   id: string;
   name: string;
 }
 
-/** 村民信息（联机） */
 export interface VillagerInfo {
   id: string;
   x: number;
   y: number;
   z: number;
   yaw: number;
+}
+
+/** 掉落物数据 */
+export interface DropData {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  item: number;
+  count: number;
 }
 
 /** 联机用的方块 diff：[x,y,z,id] */
@@ -32,6 +46,7 @@ export interface WelcomeMsg {
   spawn: [number, number, number];
   players: RemotePlayerInfo[];
   villagers: VillagerInfo[];
+  mode: GameMode;
   diffs: WireDiff[];
 }
 
@@ -41,6 +56,8 @@ export interface BlockSetMsg {
   y: number;
   z: number;
   id: number;
+  dropItem?: number;
+  dropCount?: number;
 }
 
 export interface PlayerStateMsg {
@@ -57,6 +74,22 @@ export interface PlayerStateMsg {
 export interface VillagerStateMsg {
   t: 'villagerState';
   list: VillagerInfo[];
+}
+
+export interface DropSpawnMsg {
+  t: 'dropSpawn';
+  drop: DropData;
+}
+
+export interface DropPickupMsg {
+  t: 'dropPickup';
+  id: string;
+  playerId: string;
+}
+
+export interface DropRemoveMsg {
+  t: 'dropRemove';
+  id: string;
 }
 
 export interface ChatMsg {
@@ -77,4 +110,4 @@ export interface LeaveMsg {
   id: string;
 }
 
-export type NetMessage = HelloMsg | WelcomeMsg | BlockSetMsg | PlayerStateMsg | VillagerStateMsg | ChatMsg | JoinMsg | LeaveMsg;
+export type NetMessage = HelloMsg | WelcomeMsg | BlockSetMsg | PlayerStateMsg | VillagerStateMsg | DropSpawnMsg | DropPickupMsg | DropRemoveMsg | ChatMsg | JoinMsg | LeaveMsg;
