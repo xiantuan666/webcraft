@@ -130,7 +130,7 @@ export function meshChunk(world: World, cx: number, cz: number): { opaque: MeshD
           const target = isTransparent ? transparent : opaque;
           const base = target.positions.length / 3;
           for (const c of face.corners) {
-            target.positions.push(gx + c.pos[0], y + c.pos[1], gz + c.pos[2]);
+            target.positions.push(x + c.pos[0], y + c.pos[1], z + c.pos[2]);
             target.normals.push(face.dir[0], face.dir[1], face.dir[2]);
             const shade = faceShade(face.dir);
             target.uvs.push(u0 + c.uv[0] * (u1 - u0), v1 - c.uv[1] * (v1 - v0));
