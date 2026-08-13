@@ -27,6 +27,7 @@ export class PlayerController {
   yaw = 0;
   pitch = 0;
   flying = true;
+  flightAllowed = true;
   onGround = false;
 
   private world: World;
@@ -66,7 +67,17 @@ export class PlayerController {
     return this.pointerLocked;
   }
 
+  /** 是否允许飞行（生存禁飞） */
+  setFlightAllowed(allowed: boolean): void {
+    this.flightAllowed = allowed;
+    if (!allowed) {
+      this.flying = false;
+      this.velocity.y = 0;
+    }
+  }
+
   toggleFlying(): void {
+    if (!this.flightAllowed) return;
     this.flying = !this.flying;
     this.velocity.y = 0;
   }
@@ -92,12 +103,19 @@ export class PlayerController {
       else if (input.down) this.velocity.y = -FLY_SPEED * 0.9;
       else this.velocity.y = 0;
     } else {
-      this.velocity.y -= GRAVITY * dt;
-      if (input.up && this.onGround) {
-        this.velocity.y = JUMP_SPEED;
-        this.onGround = false;
+      if (this.inWater()) {
+        // 水中：浮力缓慢下沉，按住空格上浮
+        this.velocity.y -= GRAVITY * 0.35 * dt;
+        if (input.up) this.velocity.y = 4.2;
+        if (this.velocity.y < -3) this.velocity.y = -3;
+      } else {
+        this.velocity.y -= GRAVITY * dt;
+        if (input.up && this.onGround) {
+          this.velocity.y = JUMP_SPEED;
+          this.onGround = false;
+        }
+        if (this.velocity.y < -40) this.velocity.y = -40;
       }
-      if (this.velocity.y < -40) this.velocity.y = -40;
     }
 
     this.onGround = false;
@@ -132,6 +150,13 @@ export class PlayerController {
         this.onGround = true;
       }
     }
+  }
+
+  private inWater(): boolean {
+    const fx = Math.floor(this.position.x);
+    const fy = Math.floor(this.position.y + 0.4);
+    const fz = Math.floor(this.position.z);
+    return this.world.getBlock(fx, fy, fz) === 6; // Block.Water
   }
 
   private collides(): boolean {

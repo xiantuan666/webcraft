@@ -21,7 +21,7 @@ import { isBlockItem, isTool } from './survival/items';
 import { blockProps, effectiveSpeed, miningTime } from './survival/blockProps';
 import { matchRecipe } from './survival/crafting';
 import { Furnace, isFuel, smeltRecipeFor } from './survival/smelting';
-import { PlayerState } from './survival/playerState';
+import { PlayerState, fallDamage } from './survival/playerState';
 import { Drops } from './survival/drops';
 import { blockColor } from './render/textures';
 import { getCrackTexture } from './render/crack';
@@ -77,6 +77,7 @@ export class Game {
   private crackMesh: THREE.Mesh | null = null;
   private crackMat: THREE.MeshBasicMaterial | null = null;
   private lastBarsUpdate = 0;
+  private wasOnGround = true;
 
   constructor() {
     this.app = el('app');
@@ -252,10 +253,16 @@ export class Game {
       sx = spawnOverride[0];
       sy = spawnOverride[1];
       sz = spawnOverride[2];
+    } else if (this.village) {
+      sx = this.village.centerX + 0.5;
+      sz = this.village.centerZ + 0.5;
+      sy = this.village.groundY + 1;
     } else if (sy < world.config.seaLevel + 1) {
       sy = world.config.seaLevel + 1;
     }
     this.controls.spawnAt(sx, sy, sz);
+    this.controls.setFlightAllowed(this.gameMode === 'creative');
+    this.wasOnGround = true;
     this.villagers = new Villagers(world, this.mode === 'host');
     this.renderer.addToScene(this.villagers.group);
     if (this.mode === 'host' && this.village) {
@@ -272,10 +279,17 @@ export class Game {
   private worldInfo() {
     const w = this.world!;
     const c = w.config;
-    const sx = c.size / 2;
-    let sy = w.getSurfaceHeight(sx, sx) + 2;
-    if (sy < c.seaLevel + 1) sy = c.seaLevel + 1;
-    return { seed: c.seed, size: c.size, height: c.height, seaLevel: c.seaLevel, spawn: [sx, sy, sx] as [number, number, number] };
+    let sx = c.size / 2;
+    let sz = c.size / 2;
+    let sy = w.getSurfaceHeight(sx, sz) + 2;
+    if (this.village) {
+      sx = this.village.centerX + 0.5;
+      sz = this.village.centerZ + 0.5;
+      sy = this.village.groundY + 1;
+    } else if (sy < c.seaLevel + 1) {
+      sy = c.seaLevel + 1;
+    }
+    return { seed: c.seed, size: c.size, height: c.height, seaLevel: c.seaLevel, spawn: [sx, sy, sz] as [number, number, number] };
   }
 
   private worldDiffs(): WireDiff[] {
@@ -533,7 +547,7 @@ export class Game {
   }
 
   private refreshUI(): void {
-    this.survivalUI.refresh();
+    this.survivalUI.update(this.uiState());
   }
 
   private onInvClick(i: number): void {
@@ -676,14 +690,22 @@ export class Game {
   private respawn(): void {
     this.playerState.health = 20;
     this.playerState.hunger = 20;
+    this.playerState.breath = 10;
     const c = this.world!.config;
-    const sx = c.size / 2;
-    const sz = c.size / 2;
+    let sx = c.size / 2;
+    let sz = c.size / 2;
     let sy = this.world!.getSurfaceHeight(sx, sz) + 2;
-    if (sy < c.seaLevel + 1) sy = c.seaLevel + 1;
+    if (this.village) {
+      sx = this.village.centerX + 0.5;
+      sz = this.village.centerZ + 0.5;
+      sy = this.village.groundY + 1;
+    } else if (sy < c.seaLevel + 1) {
+      sy = c.seaLevel + 1;
+    }
+    this.wasOnGround = true;
     this.controls!.spawnAt(sx, sy, sz);
-    this.hud.toast('你死了，已回到出生点（物品保留）');
-    this.hud.setBars(20, 20);
+    this.hud.toast('你死了，已回到村庄（物品保留）');
+    this.hud.setBars(20, 20, 10);
   }
 
   private toggleGameMode(): void {
@@ -692,6 +714,8 @@ export class Game {
     this.closeScreen();
     this.mining = null;
     this.hideCrack();
+    this.controls?.setFlightAllowed(this.gameMode === 'creative');
+    this.wasOnGround = true;
     this.refreshHotbar();
   }
 
@@ -859,15 +883,17 @@ export class Game {
     if (this.gameMode === 'survival') {
       const active = this.input.forward || this.input.back || this.input.left || this.input.right || this.miningHeld;
       this.playerState.tick(dt, active);
-      if (controls.onGround && vyBefore < -10) {
-        this.playerState.damage(Math.max(0, Math.floor(Math.abs(vyBefore) - 3)));
+      if (controls.onGround && !this.wasOnGround) {
+        const dmg = fallDamage(vyBefore);
+        if (dmg > 0) this.playerState.damage(dmg);
       }
+      this.wasOnGround = controls.onGround;
       const eyeBlock = world.getBlock(Math.floor(cam.position.x), Math.floor(cam.position.y), Math.floor(cam.position.z));
-      if (eyeBlock === Block.Water) this.playerState.damage(dt * 4);
+      this.playerState.tickBreath(dt, eyeBlock === Block.Water);
       if (this.playerState.isDead()) this.respawn();
       if (now - this.lastBarsUpdate >= 200) {
         this.lastBarsUpdate = now;
-        this.hud.setBars(this.playerState.health, this.playerState.hunger);
+        this.hud.setBars(this.playerState.health, this.playerState.hunger, this.playerState.breath);
       }
       this.tickFurnaces(dt);
     }

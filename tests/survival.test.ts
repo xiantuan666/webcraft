@@ -3,6 +3,7 @@ import { Inventory } from '../src/survival/inventory';
 import { matchRecipe } from '../src/survival/crafting';
 import { Furnace, smeltRecipeFor, isFuel, SMELT_RECIPES } from '../src/survival/smelting';
 import { effectiveSpeed } from '../src/survival/blockProps';
+import { PlayerState, fallDamage } from '../src/survival/playerState';
 import { Block } from '../src/world/blockIds';
 import { Item } from '../src/survival/items';
 import { World } from '../src/world/world';
@@ -134,6 +135,60 @@ describe('blockProps / tools', () => {
   });
 });
 
+
+describe('fallDamage (宽松)', () => {
+  it('first 4 blocks are safe', () => {
+    expect(fallDamage(0)).toBe(0);
+    expect(fallDamage(-12.5)).toBe(0); // 3 格
+    expect(fallDamage(-14.4)).toBe(0); // 4 格
+  });
+  it('damage grows gently', () => {
+    expect(fallDamage(-17.7)).toBe(1); // ~6 格
+    expect(fallDamage(-22.8)).toBe(4); // ~10 格
+  });
+  it('terminal velocity is survivable-ish', () => {
+    expect(fallDamage(-40)).toBe(16);
+  });
+});
+
+describe('breath / drowning', () => {
+  it('underwater consumes breath then damages slowly', () => {
+    const ps = new PlayerState();
+    // 1.5 秒水下 -> 消耗 1 点氧气
+    ps.tickBreath(1.5, true);
+    expect(ps.breath).toBe(9);
+    // 再 13.5 秒 -> 氧气耗尽并开始扣血（每 2 秒 1 血）
+    ps.tickBreath(13.5, true);
+    expect(ps.breath).toBe(0);
+    expect(ps.health).toBeLessThan(20);
+  });
+  it('regens breath above water', () => {
+    const ps = new PlayerState();
+    ps.breath = 5;
+    ps.tickBreath(2.5, false);
+    expect(ps.breath).toBe(10);
+  });
+  it('no damage while breath > 0 underwater', () => {
+    const ps = new PlayerState();
+    ps.tickBreath(0.5, true);
+    expect(ps.health).toBe(20);
+  });
+});
+
+describe('hunger / starvation (宽松)', () => {
+  it('active drain is slow', () => {
+    const ps = new PlayerState();
+    ps.tick(90, true);
+    expect(ps.hunger).toBe(19);
+  });
+  it('starvation deals 1 hp per 5s', () => {
+    const ps = new PlayerState();
+    ps.hunger = 0;
+    ps.health = 10;
+    ps.tick(5, false);
+    expect(ps.health).toBe(9);
+  });
+});
 describe('ores', () => {
   it('world generation places ores deterministically and some exist', () => {
     const a = new World(defaultWorldConfig(55));

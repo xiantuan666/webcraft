@@ -115,14 +115,22 @@ export class Hud {
     });
   }
 
-  /** 生命/饥饿条 */
-  setBars(health: number, hunger: number): void {
+  /** 生命/饥饿/氧气条 */
+  setBars(health: number, hunger: number, breath = 10): void {
     const h = Math.max(0, Math.min(20, Math.round(health)));
     const g = Math.max(0, Math.min(20, Math.round(hunger)));
     el('hearts').textContent = '❤'.repeat(Math.ceil(h / 2));
     el('hearts-empty').textContent = '🖤'.repeat(10 - Math.ceil(h / 2));
     el('hunger').textContent = '🍗'.repeat(Math.ceil(g / 2));
     el('hunger-empty').textContent = '🖤'.repeat(10 - Math.ceil(g / 2));
+    const b = Math.max(0, Math.min(10, breath));
+    const breathEl = el('breath');
+    if (b < 10) {
+      breathEl.textContent = '🫧'.repeat(Math.max(0, Math.ceil(b)));
+      breathEl.style.display = '';
+    } else {
+      breathEl.style.display = 'none';
+    }
   }
 
   private renderSlots(): void {

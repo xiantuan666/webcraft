@@ -68,13 +68,14 @@ export class SurvivalUI {
   }
 
   open(state: UIState): void {
-    this.state = state;
     this.root.classList.remove('hidden');
-    this.render();
+    this.update(state);
   }
 
-  refresh(): void {
-    if (this.state) this.render();
+  /** 用最新状态刷新渲染（修复旧快照不更新的问题） */
+  update(state: UIState): void {
+    this.state = state;
+    this.render();
   }
 
   close(): void {
