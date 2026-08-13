@@ -7,6 +7,7 @@ export interface MeshData {
   positions: number[];
   normals: number[];
   uvs: number[];
+  colors: number[];
   indices: number[];
 }
 
@@ -38,10 +39,10 @@ const FACES: FaceDef[] = [
   { // +Y 顶
     dir: [0, 1, 0],
     corners: [
-      { pos: [0, 1, 0], uv: [0, 0] },
-      { pos: [1, 1, 0], uv: [1, 0] },
-      { pos: [1, 1, 1], uv: [1, 1] },
-      { pos: [0, 1, 1], uv: [0, 1] },
+      { pos: [0, 1, 1], uv: [0, 0] },
+      { pos: [1, 1, 1], uv: [1, 0] },
+      { pos: [1, 1, 0], uv: [1, 1] },
+      { pos: [0, 1, 0], uv: [0, 1] },
     ],
   },
   { // -Y 底
@@ -93,8 +94,16 @@ function faceSlot(id: number, faceIndex: number): number {
   }
 }
 
+/** 按面朝向给出亮度（0..1），模拟简单光照 */
+function faceShade(dir: [number, number, number]): number {
+  if (dir[1] === 1) return 1.0;
+  if (dir[1] === -1) return 0.55;
+  if (dir[0] === 1 || dir[2] === 1) return 0.82;
+  return 0.68;
+}
+
 function emptyData(): MeshData {
-  return { positions: [], normals: [], uvs: [], indices: [] };
+  return { positions: [], normals: [], uvs: [], colors: [], indices: [] };
 }
 
 /** 生成区块网格，返回不透明/透明两套数据 */
@@ -123,7 +132,9 @@ export function meshChunk(world: World, cx: number, cz: number): { opaque: MeshD
           for (const c of face.corners) {
             target.positions.push(gx + c.pos[0], y + c.pos[1], gz + c.pos[2]);
             target.normals.push(face.dir[0], face.dir[1], face.dir[2]);
+            const shade = faceShade(face.dir);
             target.uvs.push(u0 + c.uv[0] * (u1 - u0), v0 + c.uv[1] * (v1 - v0));
+            target.colors.push(shade, shade, shade);
           }
           target.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
         }

@@ -290,7 +290,9 @@ export function initTextures(): Promise<void> {
   };
   const tasks: Promise<void>[] = [];
   for (let slot = 0; slot < TEX_COUNT; slot++) tasks.push(loadOne(slot));
-  return Promise.all(tasks).then(() => undefined);
+  return Promise.all(tasks).then(() => {
+    if (atlasTexture) atlasTexture.needsUpdate = true;
+  });
 }
 
 export function getAtlasCanvas(): HTMLCanvasElement {

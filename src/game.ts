@@ -54,7 +54,7 @@ export class Game {
     document.addEventListener('keyup', (e) => this.onKeyUp(e));
     document.addEventListener('mousedown', (e) => this.onMouseDown(e));
     document.addEventListener('wheel', (e) => {
-      if (this.inGame()) this.hud.cycleSlot(Math.sign(e.deltaY));
+      if (this.inGame() && !this.hud.isPickerOpen() && !this.hud.isChatOpen()) this.hud.cycleSlot(Math.sign(e.deltaY));
     }, { passive: true });
     window.addEventListener('beforeunload', () => this.saveNow());
     document.addEventListener('contextmenu', (e) => { if (this.inGame()) e.preventDefault(); });
@@ -312,7 +312,10 @@ export class Game {
       case 'ShiftLeft':
       case 'ShiftRight': this.input.down = true; break;
       case 'Enter': this.hud.openChat(); break;
-      case 'KeyE': this.hud.togglePicker(); break;
+      case 'KeyE':
+        if (!this.hud.isPickerOpen()) document.exitPointerLock();
+        this.hud.togglePicker();
+        break;
       case 'Tab':
         e.preventDefault();
         this.hud.setPlayersVisible(true);
@@ -377,7 +380,9 @@ export class Game {
     const renderer = this.renderer!;
     const controls = this.controls!;
 
-    controls.update(dt, this.input);
+    if (!this.hud.isChatOpen() && !this.hud.isPickerOpen()) {
+      controls.update(dt, this.input);
+    }
     const cam = renderer.camera;
     cam.position.set(controls.position.x, controls.position.y + EYE_HEIGHT, controls.position.z);
     cam.rotation.order = 'YXZ';

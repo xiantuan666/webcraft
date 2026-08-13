@@ -9,6 +9,7 @@ function toGeometry(data: MeshData): THREE.BufferGeometry {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(data.positions, 3));
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(data.normals, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(data.uvs, 2));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(data.colors, 3));
   geo.setIndex(new THREE.Uint32BufferAttribute(data.indices, 1));
   geo.computeBoundingSphere();
   return geo;
@@ -20,8 +21,8 @@ export class WorldRenderer {
   readonly camera: THREE.PerspectiveCamera;
   readonly renderer: THREE.WebGLRenderer;
   private readonly chunkMeshes = new Map<number, THREE.Mesh[]>();
-  private readonly opaqueMat: THREE.MeshLambertMaterial;
-  private readonly transparentMat: THREE.MeshLambertMaterial;
+  private readonly opaqueMat: THREE.MeshBasicMaterial;
+  private readonly transparentMat: THREE.MeshBasicMaterial;
   private loadedCenter: [number, number] = [-9999, -9999];
   private container: HTMLElement;
 
@@ -36,14 +37,15 @@ export class WorldRenderer {
     this.scene.background = new THREE.Color(0x87ceeb);
     this.scene.fog = new THREE.Fog(0x87ceeb, 90, 240);
 
+    // 光照供远端玩家实体（Lambert）使用；世界方块用 MeshBasicMaterial 不受光影响
     const hemi = new THREE.HemisphereLight(0xbfd8ff, 0x9a8a70, 0.95);
     const sun = new THREE.DirectionalLight(0xffffff, 1.1);
     sun.position.set(0.6, 1.0, 0.35);
     this.scene.add(hemi, sun);
 
-    this.opaqueMat = new THREE.MeshLambertMaterial({ map: getAtlasTexture(), side: THREE.DoubleSide });
-    this.transparentMat = new THREE.MeshLambertMaterial({
-      map: getAtlasTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    this.opaqueMat = new THREE.MeshBasicMaterial({ map: getAtlasTexture(), vertexColors: true, side: THREE.DoubleSide });
+    this.transparentMat = new THREE.MeshBasicMaterial({
+      map: getAtlasTexture(), vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     });
 
     window.addEventListener('resize', this.handleResize);
