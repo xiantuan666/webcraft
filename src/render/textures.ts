@@ -25,7 +25,20 @@ import woolRedUrl from '../assets/textures/18_wool_red.png';
 import woolBlueUrl from '../assets/textures/19_wool_blue.png';
 import woolGreenUrl from '../assets/textures/20_wool_green.png';
 import woolYellowUrl from '../assets/textures/21_wool_yellow.png';
+import villagerFaceUrl from '../assets/villager_face.jpg';
 
+
+/** 村民头部贴图（用户上传图片，懒加载；缺失/失败时调用方回退默认肤色） */
+let villagerFaceTexture: THREE.Texture | null = null;
+export function getVillagerFaceTexture(): THREE.Texture | null {
+  if (!villagerFaceTexture) {
+    villagerFaceTexture = new THREE.TextureLoader().load(villagerFaceUrl);
+    villagerFaceTexture.magFilter = THREE.NearestFilter;
+    villagerFaceTexture.minFilter = THREE.NearestFilter;
+    villagerFaceTexture.colorSpace = THREE.SRGBColorSpace;
+  }
+  return villagerFaceTexture;
+}
 export const TILE = 16;
 export const ATLAS_TILES = 16;
 export const ATLAS_SIZE = TILE * ATLAS_TILES;

@@ -1,14 +1,16 @@
 import * as THREE from 'three';
 import { World, type BlockDiff } from './world/world';
 import { defaultWorldConfig, generateWorld, type WorldConfig } from './world/terrain';
+import { generateVillage, type VillageInfo } from './world/village';
 import { Block } from './world/blockIds';
 import { WorldRenderer } from './render/renderer';
 import { PlayerController, EMPTY_INPUT, type InputState } from './player/controls';
 import { raycast, intersectsPlayer, REACH } from './player/interact';
 import { RemotePlayers } from './player/remotePlayers';
+import { Villagers } from './player/villagers';
 import { Host, type HostEvents, type HostProvider } from './net/host';
 import { Client, type ClientEvents } from './net/client';
-import type { ChatMsg, NetMessage, PlayerStateMsg, RemotePlayerInfo, WireDiff } from './net/protocol';
+import type { ChatMsg, NetMessage, PlayerStateMsg, RemotePlayerInfo, VillagerInfo, WireDiff } from './net/protocol';
 import { Menu } from './ui/menu';
 import { Hud } from './ui/hud';
 import { el } from './ui/dom';
@@ -36,6 +38,9 @@ export class Game {
   private roomCode = '';
   private players = new Map<string, string>();
   private lastStateSent = 0;
+  private lastVillagerSend = 0;
+  private village: VillageInfo | null = null;
+  private villagers: Villagers | null = null;
   private lastClick = 0;
   private lastSpace = -1;
   private lastTime = 0;
@@ -102,12 +107,14 @@ export class Game {
     this.world = new World(defaultWorldConfig(seed));
     generateWorld(this.world, this.world.config);
     this.world.applyDiffs(diffs);
+    this.village = generateVillage(this.world, this.world.config);
     this.initWorldVisuals();
 
     const provider: HostProvider = {
       getWorldInfo: () => this.worldInfo(),
       getDiffs: () => this.worldDiffs(),
       getPlayers: () => this.playerList(),
+      getVillagers: () => this.villagers?.snapshot() ?? [],
       getHostName: () => this.myName,
     };
     const events: HostEvents = {
@@ -145,6 +152,7 @@ export class Game {
       onWelcome: (w) => this.onWelcome(w),
       onBlockSet: (x, y, z, id) => this.applyRemoteBlock(x, y, z, id),
       onPlayerState: (s) => this.remote.updateState(s),
+      onVillagerState: (list) => this.villagers?.applyRemote(list),
       onChat: (name, text) => this.addChatLine(name, text),
       onPlayerJoin: (id, name) => this.onPlayerJoin(id, name),
       onPlayerLeave: (id) => this.onPlayerLeave(id),
@@ -161,14 +169,16 @@ export class Game {
     });
   }
 
-  private onWelcome(w: { seed: number; size: number; height: number; seaLevel: number; spawn: [number, number, number]; players: RemotePlayerInfo[]; diffs: WireDiff[] }): void {
+  private onWelcome(w: { seed: number; size: number; height: number; seaLevel: number; spawn: [number, number, number]; players: RemotePlayerInfo[]; villagers: VillagerInfo[]; diffs: WireDiff[] }): void {
     const config: WorldConfig = { seed: w.seed, size: w.size, height: w.height, seaLevel: w.seaLevel };
     this.world = new World(config);
     generateWorld(this.world, this.world.config);
     this.world.applyDiffs(w.diffs.map((d) => ({ x: d[0], y: d[1], z: d[2], id: d[3] })));
+    this.village = generateVillage(this.world, config);
     this.players = new Map(w.players.map((p) => [p.id, p.name]));
     this.players.set(this.myId, this.myName);
     this.initWorldVisuals(w.spawn);
+    this.villagers?.initRemote(w.villagers);
   }
 
   private initWorldVisuals(spawnOverride?: [number, number, number]): void {
@@ -176,6 +186,11 @@ export class Game {
     this.app.replaceChildren();
     this.renderer = new WorldRenderer(this.app);
     this.renderer.addToScene(this.remote.group);
+    this.villagers = new Villagers(world, this.mode === 'host');
+    this.renderer.addToScene(this.villagers.group);
+    if (this.mode === 'host' && this.village) {
+      this.villagers.initSpawns(this.village.spawns, this.village.centerX, this.village.centerZ);
+    }
     this.controls = new PlayerController(world);
     this.controls.setPointerLockElement(this.renderer.renderer.domElement);
 
@@ -396,6 +411,12 @@ export class Game {
       this.sendState();
     }
     this.remote.update(dt);
+    this.villagers?.update(dt);
+    if (this.mode === 'host' && now - this.lastVillagerSend >= 200) {
+      this.lastVillagerSend = now;
+      const list = this.villagers?.snapshot();
+      if (list && list.length) this.host?.broadcast({ t: 'villagerState', list } satisfies NetMessage);
+    }
     renderer.render();
   };
 
@@ -442,6 +463,9 @@ export class Game {
     this.host = null;
     this.client = null;
     this.remote.clear();
+    this.villagers?.dispose();
+    this.villagers = null;
+    this.village = null;
     this.renderer?.dispose();
     this.renderer = null;
     this.controls = null;

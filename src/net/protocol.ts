@@ -5,6 +5,15 @@ export interface RemotePlayerInfo {
   name: string;
 }
 
+/** 村民信息（联机） */
+export interface VillagerInfo {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+}
+
 /** 联机用的方块 diff：[x,y,z,id] */
 export type WireDiff = [number, number, number, number];
 
@@ -22,6 +31,7 @@ export interface WelcomeMsg {
   seaLevel: number;
   spawn: [number, number, number];
   players: RemotePlayerInfo[];
+  villagers: VillagerInfo[];
   diffs: WireDiff[];
 }
 
@@ -44,6 +54,11 @@ export interface PlayerStateMsg {
   pitch: number;
 }
 
+export interface VillagerStateMsg {
+  t: 'villagerState';
+  list: VillagerInfo[];
+}
+
 export interface ChatMsg {
   t: 'chat';
   id: string;
@@ -62,4 +77,4 @@ export interface LeaveMsg {
   id: string;
 }
 
-export type NetMessage = HelloMsg | WelcomeMsg | BlockSetMsg | PlayerStateMsg | ChatMsg | JoinMsg | LeaveMsg;
+export type NetMessage = HelloMsg | WelcomeMsg | BlockSetMsg | PlayerStateMsg | VillagerStateMsg | ChatMsg | JoinMsg | LeaveMsg;

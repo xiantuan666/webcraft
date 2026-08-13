@@ -1,11 +1,12 @@
 import Peer from 'peerjs';
 import type { DataConnection } from 'peerjs';
-import { PROTOCOL_VERSION, type NetMessage, type PlayerStateMsg, type WelcomeMsg } from './protocol';
+import { PROTOCOL_VERSION, type NetMessage, type PlayerStateMsg, type VillagerInfo, type WelcomeMsg } from './protocol';
 
 export interface ClientEvents {
   onWelcome(w: WelcomeMsg): void;
   onBlockSet(x: number, y: number, z: number, id: number): void;
   onPlayerState(s: PlayerStateMsg): void;
+  onVillagerState(list: VillagerInfo[]): void;
   onChat(name: string, text: string): void;
   onPlayerJoin(id: string, name: string): void;
   onPlayerLeave(id: string): void;
@@ -80,6 +81,7 @@ export class Client {
       case 'welcome': this.events.onWelcome(msg); break;
       case 'blockSet': this.events.onBlockSet(msg.x, msg.y, msg.z, msg.id); break;
       case 'playerState': this.events.onPlayerState(msg); break;
+      case 'villagerState': this.events.onVillagerState(msg.list); break;
       case 'chat': this.events.onChat(msg.name, msg.text); break;
       case 'join': this.events.onPlayerJoin(msg.id, msg.name); break;
       case 'leave': this.events.onPlayerLeave(msg.id); break;

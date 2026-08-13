@@ -1,6 +1,6 @@
 import Peer from 'peerjs';
 import type { DataConnection } from 'peerjs';
-import type { NetMessage, PlayerStateMsg, RemotePlayerInfo, WelcomeMsg, WireDiff } from './protocol';
+import type { NetMessage, PlayerStateMsg, RemotePlayerInfo, VillagerInfo, WelcomeMsg, WireDiff } from './protocol';
 
 export interface WorldInfo {
   seed: number;
@@ -14,6 +14,7 @@ export interface HostProvider {
   getWorldInfo(): WorldInfo;
   getDiffs(): WireDiff[];
   getPlayers(): RemotePlayerInfo[];
+  getVillagers(): VillagerInfo[];
   getHostName(): string;
 }
 
@@ -109,6 +110,7 @@ export class Host {
       seaLevel: info.seaLevel,
       spawn: info.spawn,
       players: this.provider.getPlayers(),
+      villagers: this.provider.getVillagers(),
       diffs: this.provider.getDiffs(),
     };
   }
