@@ -124,7 +124,7 @@ export class Game {
       const hostId = this.host?.getId() ?? 'host';
       this.myId = hostId;
       this.players.set(hostId, this.myName);
-      this.hud.setStatus(`房主 · 房间 ${this.roomCode} · 在线 ${this.players.size}`);
+      this.refreshPlayers();
     }).catch((err: unknown) => {
       this.showError(err instanceof Error ? err.message : String(err));
     });
@@ -155,7 +155,7 @@ export class Game {
     this.client.join(this.roomCode, this.myName).then(() => {
       this.myId = this.client?.getId() ?? 'guest';
       this.players.set(this.myId, this.myName);
-      this.hud.setStatus(`已连接 · 房间 ${this.roomCode} · 在线 ${this.players.size}`);
+      this.refreshPlayers();
     }).catch((err: unknown) => {
       this.showError(err instanceof Error ? err.message : String(err));
     });
