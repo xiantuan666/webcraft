@@ -1,0 +1,54 @@
+import { encodeDiffs, decodeDiffs } from './diffCodec';
+import type { BlockDiff } from './world';
+
+export const SAVE_PREFIX = 'mcw_save_';
+export const NAME_KEY = 'mcw_name';
+
+export interface SaveData {
+  v: 1;
+  seed: number;
+  blocks: string;
+}
+
+export function saveKey(code: string): string {
+  return SAVE_PREFIX + code.toUpperCase();
+}
+
+export function hasSave(code: string): boolean {
+  return localStorage.getItem(saveKey(code)) !== null;
+}
+
+export function loadSave(code: string): { seed: number; diffs: BlockDiff[] } | null {
+  const raw = localStorage.getItem(saveKey(code));
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw) as SaveData;
+    if (data.v !== 1 || typeof data.seed !== 'number' || typeof data.blocks !== 'string') return null;
+    return { seed: data.seed, diffs: decodeDiffs(data.blocks) };
+  } catch {
+    return null;
+  }
+}
+
+/** 保存房主世界；返回是否成功（配额不足时 false） */
+export function saveWorld(code: string, seed: number, diffs: readonly BlockDiff[]): boolean {
+  const data: SaveData = { v: 1, seed, blocks: encodeDiffs(diffs) };
+  try {
+    localStorage.setItem(saveKey(code), JSON.stringify(data));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearSave(code: string): void {
+  localStorage.removeItem(saveKey(code));
+}
+
+export function loadUserName(): string {
+  return localStorage.getItem(NAME_KEY) ?? '';
+}
+
+export function saveUserName(name: string): void {
+  localStorage.setItem(NAME_KEY, name);
+}

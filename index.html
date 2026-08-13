@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebCraft · 1.12 风格网页体素联机版</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9B%8F%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="menu" class="overlay">
+    <div class="menu-box">
+      <h1>⛏️ WebCraft</h1>
+      <p class="sub">1.12 风格 · 原创网页体素 · 联机版</p>
+      <label class="field">昵称
+        <input id="name-input" maxlength="16" placeholder="你的昵称" />
+      </label>
+      <div class="row">
+        <button id="btn-create" class="primary">创建房间</button>
+        <input id="room-code" readonly />
+        <button id="btn-regen" title="换一个房间码">换一个</button>
+      </div>
+      <div class="row">
+        <input id="join-code" maxlength="5" placeholder="输入房间码" />
+        <button id="btn-join" class="primary">加入房间</button>
+      </div>
+      <p class="hint">
+        操作：鼠标点击进入游戏 · WASD 移动 · 空格上升/双击切换飞行 · Shift 下降 ·
+        左键破坏 / 右键放置 · 1-9 或滚轮切热栏 · E 选择方块 · Enter 聊天 · Tab 玩家列表<br/>
+        联机使用 WebRTC 点对点（PeerJS 公共信令），适合好友小规模联机。
+      </p>
+    </div>
+  </div>
+
+  <div id="loading" class="overlay hidden">
+    <div class="loading-box">正在生成世界…</div>
+  </div>
+
+  <div id="hud" class="hidden">
+    <div id="crosshair">+</div>
+    <div id="hotbar"></div>
+    <div id="chat-log"></div>
+    <div id="chat-input-wrap" class="hidden"><input id="chat-input" maxlength="100" placeholder="输入消息，回车发送" /></div>
+    <div id="players-list" class="hidden"></div>
+    <div id="status"></div>
+    <button id="btn-leave" title="离开房间">离开</button>
+    <div id="toast" class="hidden"></div>
+    <div id="picker" class="hidden"></div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "webcraft",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "网页版 Minecraft 1.12 风格（原创克隆）· WebRTC 联机",
+  "packageManager": "pnpm@11.16.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "peerjs": "^1.5.5",
+    "simplex-noise": "^4.0.3",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.185.4",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  }
+}

@@ -1,0 +1,54 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #1a1a2e; color: #eee; }
+#app { position: fixed; inset: 0; }
+#app canvas { display: block; }
+
+.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 50; background: rgba(10,10,20,0.72); }
+.hidden { display: none !important; }
+
+.menu-box { width: 460px; max-width: 92vw; background: #262640; border: 1px solid #3a3a5c; border-radius: 12px; padding: 28px 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+.menu-box h1 { font-size: 30px; margin-bottom: 4px; }
+.menu-box .sub { color: #9a9ab8; margin-bottom: 22px; font-size: 13px; }
+.field { display: block; margin-bottom: 14px; font-size: 13px; color: #b8b8d0; }
+.field input, .row input { width: 100%; margin-top: 6px; }
+input { background: #1c1c32; border: 1px solid #44446a; color: #eee; border-radius: 6px; padding: 9px 12px; font-size: 14px; outline: none; }
+input:focus { border-color: #6c8cff; }
+.row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+.row input { margin-top: 0; flex: 1; }
+button { background: #33335c; border: 1px solid #4a4a78; color: #eee; border-radius: 6px; padding: 9px 14px; font-size: 14px; cursor: pointer; }
+button:hover { background: #41416e; }
+button.primary { background: #3f6ae0; border-color: #5a82f5; }
+button.primary:hover { background: #4f7af0; }
+#btn-regen { padding: 9px 10px; font-size: 12px; }
+.hint { margin-top: 16px; font-size: 12px; line-height: 1.8; color: #8a8aa8; }
+
+.loading-box { background: #262640; border: 1px solid #3a3a5c; border-radius: 10px; padding: 22px 34px; font-size: 16px; }
+
+#hud { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+#crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 26px; color: #fff; text-shadow: 0 0 3px rgba(0,0,0,0.8); }
+
+#hotbar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 3px; background: rgba(0,0,0,0.45); padding: 4px; border-radius: 6px; }
+#hotbar .slot { width: 46px; height: 46px; border: 2px solid rgba(255,255,255,0.25); border-radius: 3px; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
+#hotbar .slot img { width: 36px; height: 36px; image-rendering: pixelated; }
+#hotbar .slot.sel { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.6); }
+
+#chat-log { position: absolute; left: 14px; bottom: 90px; width: 420px; max-width: 60vw; display: flex; flex-direction: column; gap: 2px; }
+#chat-log .line { background: rgba(0,0,0,0.4); padding: 3px 8px; border-radius: 4px; font-size: 13px; word-break: break-all; }
+#chat-log .line .who { color: #7fe0ff; font-weight: bold; }
+#chat-input-wrap { position: absolute; left: 14px; bottom: 56px; width: 420px; max-width: 60vw; pointer-events: auto; }
+#chat-input { width: 100%; background: rgba(0,0,0,0.55); }
+
+#players-list { position: absolute; left: 14px; top: 14px; background: rgba(0,0,0,0.5); border-radius: 6px; padding: 8px 12px; min-width: 160px; }
+#players-list h4 { font-size: 12px; color: #9a9ab8; margin-bottom: 6px; }
+#players-list .p { font-size: 13px; padding: 2px 0; }
+
+#status { position: absolute; right: 14px; top: 14px; background: rgba(0,0,0,0.5); border-radius: 6px; padding: 6px 12px; font-size: 12px; color: #b8d0ff; }
+#btn-leave { position: absolute; right: 14px; bottom: 14px; pointer-events: auto; font-size: 13px; }
+#toast { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%); background: rgba(0,0,0,0.75); border: 1px solid #555; border-radius: 8px; padding: 10px 18px; font-size: 14px; max-width: 80vw; text-align: center; }
+
+#picker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #262640; border: 1px solid #4a4a78; border-radius: 10px; padding: 14px; pointer-events: auto; }
+#picker h4 { font-size: 14px; margin-bottom: 8px; text-align: center; }
+#picker .grid { display: grid; grid-template-columns: repeat(10, 44px); gap: 4px; max-width: 80vw; max-height: 60vh; overflow: auto; }
+#picker .item { width: 44px; height: 44px; background: #1c1c32; border: 1px solid #44446a; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+#picker .item:hover { border-color: #6c8cff; }
+#picker .item img { width: 34px; height: 34px; image-rendering: pixelated; }
