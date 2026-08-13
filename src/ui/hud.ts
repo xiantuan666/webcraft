@@ -29,6 +29,9 @@ export class Hud {
     for (let i = 0; i < HOTBAR_SIZE; i++) {
       const slot = document.createElement('div');
       slot.className = 'slot';
+      const img = document.createElement('img');
+      img.alt = '';
+      slot.appendChild(img);
       slot.addEventListener('click', () => this.selectSlot(i));
       bar.appendChild(slot);
       this.slotEls.push(slot);

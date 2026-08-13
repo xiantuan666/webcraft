@@ -133,7 +133,7 @@ export function meshChunk(world: World, cx: number, cz: number): { opaque: MeshD
             target.positions.push(gx + c.pos[0], y + c.pos[1], gz + c.pos[2]);
             target.normals.push(face.dir[0], face.dir[1], face.dir[2]);
             const shade = faceShade(face.dir);
-            target.uvs.push(u0 + c.uv[0] * (u1 - u0), v0 + c.uv[1] * (v1 - v0));
+            target.uvs.push(u0 + c.uv[0] * (u1 - u0), v1 - c.uv[1] * (v1 - v0));
             target.colors.push(shade, shade, shade);
           }
           target.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);

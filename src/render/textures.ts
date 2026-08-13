@@ -302,6 +302,7 @@ export function getAtlasCanvas(): HTMLCanvasElement {
 export function getAtlasTexture(): THREE.CanvasTexture {
   if (!atlasTexture) {
     atlasTexture = new THREE.CanvasTexture(ensureAtlasCanvas());
+    atlasTexture.flipY = false; // 关键：与 UV 的 v 方向保持一致，否则采到空白区变黑
     atlasTexture.magFilter = THREE.NearestFilter;
     atlasTexture.minFilter = THREE.NearestFilter;
     atlasTexture.generateMipmaps = false;
