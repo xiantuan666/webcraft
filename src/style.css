@@ -21,6 +21,7 @@ button.primary { background: #3f6ae0; border-color: #5a82f5; }
 button.primary:hover { background: #4f7af0; }
 #btn-regen { padding: 9px 10px; font-size: 12px; }
 .hint { margin-top: 16px; font-size: 12px; line-height: 1.8; color: #8a8aa8; }
+.credit { margin-top: 6px; font-size: 11px; color: #6a6a88; }
 
 .loading-box { background: #262640; border: 1px solid #3a3a5c; border-radius: 10px; padding: 22px 34px; font-size: 16px; }
 

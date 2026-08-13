@@ -35,6 +35,11 @@ pnpm preview      # 本地预览构建产物
 - 存档在房主浏览器 localStorage；换房主即换存档（v1 不做云端存档/房主迁移）
 - 严格 NAT 环境可能无法直连（v1 不接自建 TURN）
 
+## 素材与版权
+- 方块贴图：Minetest Game 默认贴图（[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)，© Minetest 贡献者），未修改使用，仅作属性署名；加载失败时自动回退到内置程序化贴图。
+- 不含 Mojang/Minecraft 版权素材。
+- 代码：本项目 MIT。
+
 ## 目录结构
 ```
 src/world/    区块/地形/噪声/diff 编解码/存档
