@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Item, isBlockItem } from '../survival/items';
+import { blockInfo } from '../world/blockIds';
 import { getAtlasCanvas, ATLAS_TILES, TILE } from './textures';
 
 import stickUrl from '../assets/items/item_stick.png';
@@ -101,12 +102,18 @@ function getItemAtlas(): HTMLCanvasElement {
   return itemAtlas;
 }
 
+/** 方块物品图标对应的图集槽位（texSide，与热栏一致，修复错位） */
+export function blockIconTile(itemId: number): number {
+  return blockInfo(itemId).texSide;
+}
+
 /** 生成物品图标（方块物品用方块图集，其余用品图集） */
 export function makeItemIcon(itemId: number, size = 32): HTMLCanvasElement {
   if (isBlockItem(itemId)) {
     const atlas = getAtlasCanvas();
-    const col = itemId % ATLAS_TILES;
-    const row = Math.floor(itemId / ATLAS_TILES);
+    const tile = blockIconTile(itemId);
+    const col = tile % ATLAS_TILES;
+    const row = Math.floor(tile / ATLAS_TILES);
     const c = document.createElement('canvas');
     c.width = size;
     c.height = size;

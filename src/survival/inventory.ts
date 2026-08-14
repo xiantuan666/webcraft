@@ -9,6 +9,66 @@ export interface ItemStack {
 export const INV_SIZE = 36; // 0-8 热栏，9-35 背包
 export const HOTBAR_SIZE = 9;
 
+export interface StackOpResult {
+  slot: ItemStack;
+  carried: ItemStack;
+}
+
+/** 左键（原版）：整组拿起/放下，同类合并，异类或满格交换 */
+export function leftClick(slot: ItemStack, carried: ItemStack, stackMax: number): StackOpResult {
+  if (carried.id === 0) {
+    // 空手：拿起整组
+    return { slot: emptyStack(), carried: { ...slot } };
+  }
+  if (slot.id === 0) {
+    // 手持：放到空格
+    return { slot: { ...carried }, carried: emptyStack() };
+  }
+  if (slot.id === carried.id && slot.durability === carried.durability) {
+    const space = stackMax - slot.count;
+    if (space > 0) {
+      const move = Math.min(space, carried.count);
+      const newSlot = { ...slot, count: slot.count + move };
+      const newCarried = { ...carried, count: carried.count - move };
+      return { slot: newSlot, carried: newCarried.count <= 0 ? emptyStack() : newCarried };
+    }
+    // 已满：交换
+    return { slot: { ...carried }, carried: { ...slot } };
+  }
+  // 异类：交换
+  return { slot: { ...carried }, carried: { ...slot } };
+}
+
+/** 右键（原版）：空手拿起半组（向上取整）；手持放入 1 个；满格或异类交换 */
+export function rightClick(slot: ItemStack, carried: ItemStack, stackMax: number): StackOpResult {
+  if (carried.id === 0) {
+    if (slot.id === 0) return { slot, carried };
+    const take = Math.ceil(slot.count / 2);
+    const rest = slot.count - take;
+    return {
+      slot: rest > 0 ? { ...slot, count: rest } : emptyStack(),
+      carried: { id: slot.id, count: take, durability: slot.durability },
+    };
+  }
+  if (slot.id === 0) {
+    const newCarried = { ...carried, count: carried.count - 1 };
+    return {
+      slot: { id: carried.id, count: 1, durability: carried.durability },
+      carried: newCarried.count <= 0 ? emptyStack() : newCarried,
+    };
+  }
+  if (slot.id === carried.id && slot.durability === carried.durability) {
+    const space = stackMax - slot.count;
+    if (space > 0) {
+      const newSlot = { ...slot, count: slot.count + 1 };
+      const newCarried = { ...carried, count: carried.count - 1 };
+      return { slot: newSlot, carried: newCarried.count <= 0 ? emptyStack() : newCarried };
+    }
+  }
+  // 满格或异类：交换
+  return { slot: { ...carried }, carried: { ...slot } };
+}
+
 export function emptyStack(): ItemStack {
   return { id: 0, count: 0, durability: 0 };
 }

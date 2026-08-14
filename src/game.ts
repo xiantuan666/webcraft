@@ -16,7 +16,7 @@ import { Hud } from './ui/hud';
 import { SurvivalUI, type UIState, type UIScreen } from './ui/survivalUI';
 import { el } from './ui/dom';
 import { hasSave, loadSave, saveWorld, clearSave } from './world/save';
-import { Inventory, emptyStack, type ItemStack } from './survival/inventory';
+import { Inventory, emptyStack, leftClick, rightClick, type ItemStack } from './survival/inventory';
 import { isBlockItem, isTool } from './survival/items';
 import { blockProps, effectiveSpeed, miningTime } from './survival/blockProps';
 import { matchRecipe } from './survival/crafting';
@@ -69,7 +69,7 @@ export class Game {
   private carried: ItemStack = emptyStack();
   private openScreen: UIScreen | null = null;
   private openFurnaceKey: string | null = null;
-  private craftGrid: number[] = Array(9).fill(0);
+  private craftGrid: ItemStack[] = Array.from({ length: 9 }, () => emptyStack());
   private craftW = 2;
   private craftH = 2;
   private mining: { x: number; y: number; z: number; progress: number } | null = null;
@@ -84,10 +84,10 @@ export class Game {
     this.hud = new Hud();
     this.hud.onChatSubmit = (text) => this.sendChat(text);
     this.survivalUI = new SurvivalUI({
-      onInvClick: (i) => this.onInvClick(i),
-      onCraftCell: (i) => this.onCraftCell(i),
+      onInvClick: (i, b) => this.onInvClick(i, b),
+      onCraftCell: (i, b) => this.onCraftCell(i, b),
       onCraftResult: () => this.onCraftTake(),
-      onFurnaceSlot: (which) => this.onFurnaceSlot(which),
+      onFurnaceSlot: (which, b) => this.onFurnaceSlot(which, b),
       onClose: () => this.closeScreen(),
     });
     this.menu = new Menu({
@@ -480,7 +480,7 @@ export class Game {
     this.returnCraftGridToInventory();
     this.craftW = screen === 'crafting' ? 3 : 2;
     this.craftH = screen === 'crafting' ? 3 : 2;
-    this.craftGrid.fill(0);
+    for (let i = 0; i < this.craftGrid.length; i++) this.craftGrid[i] = emptyStack();
     this.openScreen = screen;
     if (document.pointerLockElement) document.exitPointerLock();
     this.survivalUI.open(this.uiState());
@@ -514,7 +514,7 @@ export class Game {
     const grid: number[][] = [];
     for (let y = 0; y < this.craftH; y++) {
       const row: number[] = [];
-      for (let x = 0; x < this.craftW; x++) row.push(this.craftGrid[y * this.craftW + x] ?? 0);
+      for (let x = 0; x < this.craftW; x++) row.push(this.craftGrid[y * this.craftW + x]?.id ?? 0);
       grid.push(row);
     }
     const r = matchRecipe(grid, this.craftW, this.craftH);
@@ -527,7 +527,7 @@ export class Game {
       title: this.openScreen === 'crafting' ? '工作台' : this.openScreen === 'furnace' ? '熔炉' : '背包',
       craftW: this.craftW,
       craftH: this.craftH,
-      craftGrid: [...this.craftGrid],
+      craftGrid: this.craftGrid.map((st) => ({ ...st })),
       craftResult: this.currentCraftResult(),
       inventory: this.inventory.slots,
       carried: this.carried,
@@ -552,65 +552,36 @@ export class Game {
     this.survivalUI.update(this.uiState());
   }
 
-  private onInvClick(i: number): void {
-    const s = this.inventory.get(i);
-    if (this.carried.id === 0) {
-      if (s.id === 0) return;
-      this.carried = { ...s };
-      this.inventory.set(i, emptyStack());
-    } else if (s.id === 0) {
-      this.inventory.set(i, { ...this.carried });
-      this.carried = emptyStack();
-    } else if (s.id === this.carried.id && s.durability === this.carried.durability) {
-      const max = this.inventory.stackMax(s.id);
-      const space = max - s.count;
-      if (space > 0) {
-        const move = Math.min(space, this.carried.count);
-        s.count += move;
-        this.carried.count -= move;
-        if (this.carried.count <= 0) this.carried = emptyStack();
-      } else {
-        this.inventory.set(i, { ...this.carried });
-        this.carried = { ...s };
-      }
-    } else {
-      const tmp = { ...this.carried };
-      this.carried = { ...s };
-      this.inventory.set(i, tmp);
-    }
+  private onInvClick(i: number, button: number): void {
+    const slot = this.inventory.get(i);
+    const refId = slot.id || this.carried.id;
+    const max = refId ? this.inventory.stackMax(refId) : 0;
+    const r = button === 2 ? rightClick(slot, this.carried, max) : leftClick(slot, this.carried, max);
+    this.inventory.set(i, r.slot);
+    this.carried = r.carried;
     this.refreshHotbar();
     this.refreshUI();
   }
 
-  /** 把合成格物品（每格 1 个）退回背包并清空 */
+  /** 把合成格物品（整叠）退回背包并清空 */
   private returnCraftGridToInventory(): void {
     for (let i = 0; i < this.craftW * this.craftH; i++) {
-      const id = this.craftGrid[i] ?? 0;
-      if (id !== 0) {
-        this.inventory.addItem(id, 1);
-        this.craftGrid[i] = 0;
+      const st = this.craftGrid[i];
+      if (st && st.id !== 0) {
+        this.inventory.addItem(st.id, st.count, st.durability);
+        this.craftGrid[i] = emptyStack();
       }
     }
     this.refreshHotbar();
   }
 
-  private onCraftCell(i: number): void {
-    const cur = this.craftGrid[i] ?? 0;
-    if (this.carried.id === 0) {
-      if (cur === 0) return;
-      this.craftGrid[i] = 0;
-      this.carried = { id: cur, count: 1, durability: 0 };
-    } else if (cur === 0) {
-      this.craftGrid[i] = this.carried.id;
-      this.carried.count -= 1;
-      if (this.carried.count <= 0) this.carried = emptyStack();
-    } else if (cur === this.carried.id) {
-      this.craftGrid[i] = 0;
-      this.carried.count += 1;
-    } else {
-      this.craftGrid[i] = this.carried.id;
-      this.carried = { id: cur, count: 1, durability: 0 };
-    }
+  private onCraftCell(i: number, button: number): void {
+    const slot = this.craftGrid[i] ?? emptyStack();
+    const refId = slot.id || this.carried.id;
+    const max = refId ? this.inventory.stackMax(refId) : 0;
+    const r = button === 2 ? rightClick(slot, this.carried, max) : leftClick(slot, this.carried, max);
+    this.craftGrid[i] = r.slot;
+    this.carried = r.carried;
     this.refreshUI();
   }
 
@@ -624,12 +595,19 @@ export class Game {
     }
     if (this.carried.id === 0) this.carried = { id: result.id, count: result.count, durability: 0 };
     else this.carried.count += result.count;
-    for (let i = 0; i < this.craftW * this.craftH; i++) this.craftGrid[i] = 0;
+    // 原版：合成一次，配方每格消耗 1 个
+    for (let i = 0; i < this.craftW * this.craftH; i++) {
+      const st = this.craftGrid[i];
+      if (st && st.id !== 0) {
+        st.count -= 1;
+        if (st.count <= 0) this.craftGrid[i] = emptyStack();
+      }
+    }
     this.refreshHotbar();
     this.refreshUI();
   }
 
-  private onFurnaceSlot(which: 'in' | 'fuel' | 'out'): void {
+  private onFurnaceSlot(which: 'in' | 'fuel' | 'out', button: number): void {
     const key = this.openFurnaceKey;
     if (!key) return;
     let f = this.furnaces.get(key);
@@ -637,50 +615,59 @@ export class Game {
       f = new Furnace();
       this.furnaces.set(key, f);
     }
-    if (which === 'in') {
-      if (this.carried.id === 0) {
-        this.carried = { id: f.inputId, count: f.inputCount, durability: 0 };
-        f.inputId = 0;
-        f.inputCount = 0;
-        f.progress = 0;
-      } else if (smeltRecipeFor(this.carried.id)) {
-        const take = Math.min(this.carried.count, 64 - f.inputCount);
-        if (f.inputId === 0 || f.inputId === this.carried.id) {
-          f.inputId = this.carried.id;
-          f.inputCount += take;
-          this.carried.count -= take;
-          if (this.carried.count <= 0) this.carried = emptyStack();
-        }
+    if (which === 'in' || which === 'fuel') {
+      const slot: ItemStack = (which === 'in' ? f.inputId : f.fuelId) !== 0
+        ? { id: which === 'in' ? f.inputId : f.fuelId, count: which === 'in' ? f.inputCount : f.fuelCount, durability: 0 }
+        : emptyStack();
+      // 空槽放入新物品时校验可烧/可燃
+      if (slot.id === 0 && this.carried.id !== 0) {
+        const ok = which === 'in' ? !!smeltRecipeFor(this.carried.id) : isFuel(this.carried.id);
+        if (!ok) return;
       }
-    } else if (which === 'fuel') {
-      if (this.carried.id === 0) {
-        this.carried = { id: f.fuelId, count: f.fuelCount, durability: 0 };
-        f.fuelId = 0;
-        f.fuelCount = 0;
-      } else if (isFuel(this.carried.id)) {
-        const take = Math.min(this.carried.count, 64 - f.fuelCount);
-        if (f.fuelId === 0 || f.fuelId === this.carried.id) {
-          f.fuelId = this.carried.id;
-          f.fuelCount += take;
-          this.carried.count -= take;
-          if (this.carried.count <= 0) this.carried = emptyStack();
-        }
+      const refId = slot.id || this.carried.id;
+      const max = refId ? this.inventory.stackMax(refId) : 0;
+      const r = button === 2 ? rightClick(slot, this.carried, max) : leftClick(slot, this.carried, max);
+      if (which === 'in') {
+        if (r.slot.id !== slot.id) f.progress = 0;
+        f.inputId = r.slot.id;
+        f.inputCount = r.slot.count;
+      } else {
+        f.fuelId = r.slot.id;
+        f.fuelCount = r.slot.count;
       }
+      this.carried = r.carried;
     } else {
-      if (this.carried.id === 0 && f.outputId !== 0) {
-        this.carried = { id: f.outputId, count: f.outputCount, durability: 0 };
-        f.outputId = 0;
-        f.outputCount = 0;
-      } else if (this.carried.id === f.outputId && f.outputId !== 0) {
-        const space = this.inventory.stackMax(this.carried.id) - this.carried.count;
-        const take = Math.min(space, f.outputCount);
-        this.carried.count += take;
-        f.outputCount -= take;
+      const slot: ItemStack = f.outputId !== 0 ? { id: f.outputId, count: f.outputCount, durability: 0 } : emptyStack();
+      if (button === 2) {
+        // 右键：取 1 个
+        if (slot.id === 0) return;
+        if (this.carried.id === 0) {
+          this.carried = { id: slot.id, count: 1, durability: 0 };
+        } else if (this.carried.id === slot.id && this.carried.count < this.inventory.stackMax(slot.id)) {
+          this.carried.count += 1;
+        } else {
+          return;
+        }
+        f.outputCount -= 1;
         if (f.outputCount <= 0) f.outputId = 0;
+      } else {
+        // 左键：取整组 / 合并
+        if (this.carried.id === 0 && slot.id !== 0) {
+          this.carried = { ...slot };
+          f.outputId = 0;
+          f.outputCount = 0;
+        } else if (this.carried.id === slot.id && slot.id !== 0) {
+          const space = this.inventory.stackMax(this.carried.id) - this.carried.count;
+          const take = Math.min(space, f.outputCount);
+          this.carried.count += take;
+          f.outputCount -= take;
+          if (f.outputCount <= 0) f.outputId = 0;
+        }
       }
     }
     this.refreshUI();
   }
+
   private tickFurnaces(dt: number): void {
     if (this.gameMode !== 'survival' || !this.world || !this.renderer) return;
     for (const [key, f] of this.furnaces) {

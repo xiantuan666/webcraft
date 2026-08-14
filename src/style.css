@@ -80,3 +80,6 @@ button.primary:hover { background: #4f7af0; }
 #picker .item { width: 44px; height: 44px; background: #1c1c32; border: 1px solid #44446a; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 #picker .item:hover { border-color: #6c8cff; }
 #picker .item img { width: 34px; height: 34px; image-rendering: pixelated; }
+
+#item-tooltip { position: fixed; z-index: 70; display: flex; align-items: center; gap: 6px; background: rgba(20,20,40,0.94); border: 1px solid #6a6a9a; border-radius: 4px; padding: 4px 8px; font-size: 13px; color: #eee; pointer-events: none; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+#item-tooltip img { width: 20px; height: 20px; image-rendering: pixelated; }

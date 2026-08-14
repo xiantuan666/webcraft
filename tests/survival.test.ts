@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { Inventory } from '../src/survival/inventory';
+import { Inventory, emptyStack, leftClick, rightClick } from '../src/survival/inventory';
 import { matchRecipe } from '../src/survival/crafting';
 import { Furnace, smeltRecipeFor, isFuel, SMELT_RECIPES } from '../src/survival/smelting';
 import { effectiveSpeed } from '../src/survival/blockProps';
 import { PlayerState, fallDamage } from '../src/survival/playerState';
-import { Block } from '../src/world/blockIds';
+import { Block, Tex } from '../src/world/blockIds';
+import { blockIconTile } from '../src/render/itemTextures';
 import { Item } from '../src/survival/items';
 import { World } from '../src/world/world';
 import { defaultWorldConfig, generateWorld } from '../src/world/terrain';
@@ -209,5 +210,87 @@ describe('ores', () => {
     }
     expect(coal).toBeGreaterThan(0);
     expect(iron).toBeGreaterThan(0);
+  });
+});
+describe('vanilla-style click interaction (leftClick/rightClick)', () => {
+  const dirt10 = { id: Block.Dirt, count: 10, durability: 0 };
+  const dirt5 = { id: Block.Dirt, count: 5, durability: 0 };
+  const dirt64 = { id: Block.Dirt, count: 64, durability: 0 };
+  const stone10 = { id: Block.Stone, count: 10, durability: 0 };
+
+  it('left click: empty hand picks up whole stack', () => {
+    const r = leftClick(dirt10, emptyStack(), 64);
+    expect(r.slot.id).toBe(0);
+    expect(r.carried).toEqual(dirt10);
+  });
+
+  it('left click: places whole stack into empty slot', () => {
+    const r = leftClick(emptyStack(), dirt10, 64);
+    expect(r.slot).toEqual(dirt10);
+    expect(r.carried.id).toBe(0);
+  });
+
+  it('left click: merges same item into slot', () => {
+    const r = leftClick(dirt5, dirt10, 64);
+    expect(r.slot.count).toBe(15);
+    expect(r.carried.id).toBe(0);
+  });
+
+  it('left click: swaps when slot is full', () => {
+    const r = leftClick(dirt64, dirt10, 64);
+    expect(r.slot).toEqual(dirt10);
+    expect(r.carried).toEqual(dirt64);
+  });
+
+  it('left click: swaps different items', () => {
+    const r = leftClick(dirt5, stone10, 64);
+    expect(r.slot).toEqual(stone10);
+    expect(r.carried).toEqual(dirt5);
+  });
+
+  it('right click: empty hand picks up half (ceil)', () => {
+    const r = rightClick(dirt10, emptyStack(), 64);
+    expect(r.slot.count).toBe(5);
+    expect(r.carried.count).toBe(5);
+    const r2 = rightClick(dirt5, emptyStack(), 64);
+    expect(r2.slot.count).toBe(2);
+    expect(r2.carried.count).toBe(3); // 向上取整
+  });
+
+  it('right click: places 1 into empty slot', () => {
+    const r = rightClick(emptyStack(), dirt10, 64);
+    expect(r.slot).toEqual({ id: Block.Dirt, count: 1, durability: 0 });
+    expect(r.carried.count).toBe(9);
+  });
+
+  it('right click: places 1 into same-item slot', () => {
+    const r = rightClick(dirt5, dirt10, 64);
+    expect(r.slot.count).toBe(6);
+    expect(r.carried.count).toBe(9);
+  });
+
+  it('right click: swaps when full or different', () => {
+    const r = rightClick(dirt64, dirt10, 64);
+    expect(r.slot).toEqual(dirt10);
+    expect(r.carried).toEqual(dirt64);
+    const r2 = rightClick(dirt5, stone10, 64);
+    expect(r2.slot).toEqual(stone10);
+    expect(r2.carried).toEqual(dirt5);
+  });
+
+  it('crafting cell (stackMax=1) left click only puts 1, keeps the rest in hand', () => {
+    const r = leftClick(emptyStack(), dirt10, 64);
+    // 合成格支持整叠：原版一格可放 64，不丢物品
+    expect(r.slot.count).toBe(10);
+    expect(r.carried.id).toBe(0);
+  });
+});
+
+describe('block icon slot (planks texture fix)', () => {
+  it('block item icon uses texSide slot, not itemId', () => {
+    expect(blockIconTile(Block.Planks)).toBe(Tex.Planks);
+    expect(blockIconTile(Block.Planks)).not.toBe(Tex.Leaves);
+    expect(blockIconTile(Block.Planks)).not.toBe(Block.Planks); // 旧 bug：直接拿 itemId 当槽位
+    expect(blockIconTile(Block.Grass)).toBe(Tex.GrassSide);
   });
 });

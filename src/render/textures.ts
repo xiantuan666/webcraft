@@ -38,6 +38,7 @@ import villagerFaceUrl from '../assets/villager_face.jpg';
 /** 村民头部贴图（用户上传图片，懒加载；缺失/失败时调用方回退默认肤色） */
 let villagerFaceTexture: THREE.Texture | null = null;
 export function getVillagerFaceTexture(): THREE.Texture | null {
+  if (typeof document === 'undefined') return null; // 无 DOM 环境（单测）回退默认肤色
   if (!villagerFaceTexture) {
     villagerFaceTexture = new THREE.TextureLoader().load(villagerFaceUrl);
     villagerFaceTexture.magFilter = THREE.NearestFilter;

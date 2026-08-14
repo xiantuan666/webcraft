@@ -3,6 +3,7 @@ import { World } from '../src/world/world';
 import { defaultWorldConfig, generateWorld } from '../src/world/terrain';
 import { generateVillage } from '../src/world/village';
 import { Block } from '../src/world/blockIds';
+import { Villagers } from '../src/player/villagers';
 
 
 describe('village ground (fix: no floating / on land)', () => {
@@ -85,5 +86,21 @@ describe('village', () => {
       }
     }
     expect(foundLog).toBe(true);
+  });
+});
+describe('villagers free movement', () => {
+  it('villagers keep moving over 3 seconds (no idle-standing) and y stays bounded', () => {
+    const w = new World(defaultWorldConfig(3));
+    generateWorld(w, w.config);
+    const v = generateVillage(w, w.config);
+    const vs = new Villagers(w, true);
+    vs.initSpawns(v.spawns, v.centerX, v.centerZ);
+    const before = vs.snapshot();
+    for (let i = 0; i < 60; i++) vs.update(0.05);
+    const after = vs.snapshot();
+    const maxMove = Math.max(...after.map((a, i) => Math.hypot(a.x - before[i].x, a.z - before[i].z)));
+    expect(maxMove).toBeGreaterThan(0.3);
+    const maxY = Math.max(...after.map((a, i) => Math.abs(a.y - before[i].y)));
+    expect(maxY).toBeLessThan(2.5);
   });
 });

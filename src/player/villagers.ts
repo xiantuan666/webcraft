@@ -5,12 +5,14 @@ import type { VillagerSpawn } from '../world/village';
 import type { VillagerInfo } from '../net/protocol';
 import { getVillagerFaceTexture } from '../render/textures';
 
-const SPEED = 0.8;
-const RADIUS = 12;
-const WANDER_MIN = 2;
-const WANDER_MAX = 4;
+const SPEED = 1.1;
+const RADIUS = 20;
+const WANDER_MIN = 0.5;
+const WANDER_MAX = 1.5;
 const CLIMB_SPEED = 2.2; // 每帧最大爬升速度（贴地）
 const FALL_SPEED = 8; // 每帧最大下落速度
+const STUCK_TIME = 2; // 卡住检测：2 秒几乎无位移则换目标
+const STUCK_EPS = 0.5;
 
 interface Villager {
   id: string;
@@ -23,6 +25,9 @@ interface Villager {
   wait: number;
   moving: boolean;
   bob: number;
+  stuckT: number;
+  lastX: number;
+  lastZ: number;
   group: THREE.Group;
   leftLeg: THREE.Group;
   rightLeg: THREE.Group;
@@ -99,6 +104,7 @@ export class Villagers {
     this.group.add(group);
     this.map.set(id, {
       id, x, y, z, yaw, tx: x, tz: z, wait: 0, moving: false, bob: Math.random() * Math.PI * 2,
+      stuckT: 0, lastX: x, lastZ: z,
       group, leftLeg, rightLeg, leftArm, rightArm,
       target: new THREE.Vector3(x, y, z),
     });
@@ -170,12 +176,25 @@ export class Villagers {
         v.moving = false;
         continue;
       }
+      // 卡住检测：2 秒内几乎无位移 → 换目标
+      v.stuckT += dt;
+      if (v.stuckT >= STUCK_TIME) {
+        if (Math.hypot(v.x - v.lastX, v.z - v.lastZ) < STUCK_EPS) {
+          this.pickTarget(v);
+        }
+        v.stuckT = 0;
+        v.lastX = v.x;
+        v.lastZ = v.z;
+      }
       // 落水 → 立即传送回村中心岸上
       if (this.isInWater(v.x, v.y, v.z)) {
         v.x = this.centerX + 0.5;
         v.z = this.centerZ + 0.5;
         v.tx = v.x;
         v.tz = v.z;
+        v.stuckT = 0;
+        v.lastX = v.x;
+        v.lastZ = v.z;
         v.wait = 1;
         const g = this.groundBelow(Math.floor(v.x), Math.floor(v.z), Math.floor(v.y) + 3);
         v.y = g >= 0 ? g + 1 : v.y;
