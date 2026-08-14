@@ -104,11 +104,10 @@ export class PlayerController {
       else this.velocity.y = 0;
     } else {
       if (this.inWater()) {
-        // 水中：浮力缓慢下沉，按住空格上浮
+        // 水中：浮力缓慢下沉；按住空格可跳跃（靠近岸边一跳上岸）
         this.velocity.y -= GRAVITY * 0.35 * dt;
-        if (input.up) this.velocity.y = 4.2;
-        if (this.velocity.y < -3) this.velocity.y = -3;
-      } else {
+        if (input.up && this.velocity.y < 4) this.velocity.y = JUMP_SPEED;
+        if (this.velocity.y < -3) this.velocity.y = -3;      } else {
         this.velocity.y -= GRAVITY * dt;
         if (input.up && this.onGround) {
           this.velocity.y = JUMP_SPEED;
@@ -131,6 +130,12 @@ export class PlayerController {
     if (!this.collides()) {
       if (axis === 'y' && amount < 0) this.onGround = false;
       return;
+    }
+    // 自动上台阶：水平移动受阻时尝试抬升 1 格（水中上岸/走 1 格台阶）
+    if (axis !== 'y' && amount !== 0 && this.position.y + 1 < this.world.config.height) {
+      this.position.y += 1;
+      if (!this.collides()) return;
+      this.position.y -= 1;
     }
     if (axis === 'x') {
       if (amount > 0) this.position.x = Math.floor(this.position.x + PLAYER_HALF) - PLAYER_HALF - EPS;

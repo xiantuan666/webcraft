@@ -48,23 +48,79 @@ export class SurvivalUI {
   private root: HTMLElement;
   private callbacks: UICallbacks;
   private state: UIState | null = null;
+  private ghost: HTMLElement | null = null;
+  private dragging = false;
 
   constructor(callbacks: UICallbacks) {
     this.callbacks = callbacks;
     this.root = el('inv-screen');
-    this.root.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      const slot = target.closest('[data-slot]') as HTMLElement | null;
-      if (!slot) return;
-      const kind = slot.dataset.slot;
+    this.root.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+    this.root.addEventListener('pointermove', (e) => this.onPointerMove(e));
+    window.addEventListener('pointerup', (e) => this.onPointerUp(e));
+    window.addEventListener('pointercancel', () => this.endDrag());
+  }
+
+  private onPointerDown(e: PointerEvent): void {
+    const slot = (e.target as HTMLElement).closest('[data-slot]') as HTMLElement | null;
+    if (!slot) return;
+    e.preventDefault();
+    const kind = slot.dataset.slot ?? '';
+    const idx = Number(slot.dataset.idx ?? '-1');
+    if (kind === 'close') return;
+    this.dragging = true;
+    this.activate(kind, idx);
+    this.showGhost(e.clientX, e.clientY);
+  }
+
+  private onPointerMove(e: PointerEvent): void {
+    if (!this.dragging || !this.ghost) return;
+    this.ghost.style.left = (e.clientX + 10) + 'px';
+    this.ghost.style.top = (e.clientY + 10) + 'px';
+  }
+
+  private onPointerUp(e: PointerEvent): void {
+    if (!this.dragging) return;
+    const slot = (e.target as HTMLElement).closest('[data-slot]') as HTMLElement | null;
+    if (slot) {
+      const kind = slot.dataset.slot ?? '';
       const idx = Number(slot.dataset.idx ?? '-1');
-      if (kind === 'inv') this.callbacks.onInvClick(idx);
-      else if (kind === 'craft') this.callbacks.onCraftCell(idx);
-      else if (kind === 'result') this.callbacks.onCraftResult();
-      else if (kind === 'fin') this.callbacks.onFurnaceSlot('in');
-      else if (kind === 'ffuel') this.callbacks.onFurnaceSlot('fuel');
-      else if (kind === 'fout') this.callbacks.onFurnaceSlot('out');
-    });
+      if (kind !== 'result' && kind !== 'close') this.activate(kind, idx);
+    }
+    this.endDrag();
+  }
+
+  private activate(kind: string, idx: number): void {
+    if (kind === 'inv') this.callbacks.onInvClick(idx);
+    else if (kind === 'craft') this.callbacks.onCraftCell(idx);
+    else if (kind === 'result') this.callbacks.onCraftResult();
+    else if (kind === 'fin') this.callbacks.onFurnaceSlot('in');
+    else if (kind === 'ffuel') this.callbacks.onFurnaceSlot('fuel');
+    else if (kind === 'fout') this.callbacks.onFurnaceSlot('out');
+  }
+
+  private showGhost(x: number, y: number): void {
+    const item = this.state?.carried;
+    if (!item || item.id <= 0) return;
+    if (!this.ghost) {
+      this.ghost = document.createElement('div');
+      this.ghost.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;width:40px;height:40px;';
+      document.body.appendChild(this.ghost);
+    }
+    const icon = makeItemIcon(item.id, 36).toDataURL();
+    const img = document.createElement('img');
+    img.src = icon;
+    img.style.width = '36px';
+    img.style.height = '36px';
+    img.style.imageRendering = 'pixelated';
+    this.ghost.replaceChildren(img);
+    this.ghost.style.display = '';
+    this.ghost.style.left = (x + 10) + 'px';
+    this.ghost.style.top = (y + 10) + 'px';
+  }
+
+  private endDrag(): void {
+    this.dragging = false;
+    if (this.ghost) this.ghost.style.display = 'none';
   }
 
   open(state: UIState): void {
@@ -79,6 +135,7 @@ export class SurvivalUI {
   }
 
   close(): void {
+    this.endDrag();
     this.state = null;
     this.root.classList.add('hidden');
   }

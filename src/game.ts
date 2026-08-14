@@ -477,6 +477,7 @@ export class Game {
   // ---------- 生存：界面（背包/合成/熔炉） ----------
 
   private showScreen(screen: UIScreen): void {
+    this.returnCraftGridToInventory();
     this.craftW = screen === 'crafting' ? 3 : 2;
     this.craftH = screen === 'crafting' ? 3 : 2;
     this.craftGrid.fill(0);
@@ -498,6 +499,7 @@ export class Game {
   }
 
   private closeScreen(): void {
+    this.returnCraftGridToInventory();
     if (this.carried.id !== 0) {
       const left = this.inventory.addItem(this.carried.id, this.carried.count, this.carried.durability);
       this.carried = left > 0 ? { ...this.carried, count: left } : emptyStack();
@@ -580,6 +582,18 @@ export class Game {
     this.refreshUI();
   }
 
+  /** 把合成格物品（每格 1 个）退回背包并清空 */
+  private returnCraftGridToInventory(): void {
+    for (let i = 0; i < this.craftW * this.craftH; i++) {
+      const id = this.craftGrid[i] ?? 0;
+      if (id !== 0) {
+        this.inventory.addItem(id, 1);
+        this.craftGrid[i] = 0;
+      }
+    }
+    this.refreshHotbar();
+  }
+
   private onCraftCell(i: number): void {
     const cur = this.craftGrid[i] ?? 0;
     if (this.carried.id === 0) {
@@ -588,7 +602,8 @@ export class Game {
       this.carried = { id: cur, count: 1, durability: 0 };
     } else if (cur === 0) {
       this.craftGrid[i] = this.carried.id;
-      this.carried = emptyStack();
+      this.carried.count -= 1;
+      if (this.carried.count <= 0) this.carried = emptyStack();
     } else if (cur === this.carried.id) {
       this.craftGrid[i] = 0;
       this.carried.count += 1;

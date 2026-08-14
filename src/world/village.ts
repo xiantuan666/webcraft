@@ -20,19 +20,52 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
-/** 确定性生成小村庄：广场 + 4 间小屋 + 村民出生点（全部用现有方块） */
+/** 判断候选村址是否基本在陆地上（采样点多数高于海平面） */
+function isLandArea(world: World, config: WorldConfig, cx: number, cz: number): boolean {
+  const { seaLevel, size } = config;
+  const pts: Array<[number, number]> = [];
+  for (let dz = -7; dz <= 7; dz += 7) {
+    for (let dx = -7; dx <= 7; dx += 7) pts.push([cx + dx, cz + dz]);
+  }
+  for (const [ox, oz] of [[0, -16], [0, 16], [16, 0], [-16, 0]]) {
+    pts.push([cx + ox, cz + oz], [cx + ox + 4, cz + oz + 4]);
+  }
+  let above = 0;
+  let total = 0;
+  for (const [x, z] of pts) {
+    if (x < 0 || z < 0 || x >= size || z >= size) continue;
+    total++;
+    if (world.getSurfaceHeight(x, z) >= seaLevel) above++;
+  }
+  return total > 0 && above / total >= 0.6;
+}
+
+/** 确定性生成小村庄：广场 + 4 间小屋 + 村民出生点（贴地、不悬浮） */
 export function generateVillage(world: World, config: WorldConfig): VillageInfo {
   const { size, seaLevel, seed } = config;
   const rng = mulberry32((seed ^ 0x51ab51ab) >>> 0);
+  const margin = 26;
 
-  // 出生点(世界中心)附近 100~200 格选村址
-  const angle = rng() * Math.PI * 2;
-  const dist = 100 + rng() * 100;
-  const margin = 26; // 给房屋偏移与屋顶外挑留出边界
-  const cx = clamp(Math.round(size / 2 + Math.cos(angle) * dist), margin, size - margin);
-  const cz = clamp(Math.round(size / 2 + Math.sin(angle) * dist), margin, size - margin);
+  // 候选选址：优先陆地，最多尝试 8 次
+  let cx = clamp(Math.round(size / 2), margin, size - margin);
+  let cz = clamp(Math.round(size / 2), margin, size - margin);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const angle = rng() * Math.PI * 2;
+    const dist = 100 + rng() * 100;
+    const tx = clamp(Math.round(size / 2 + Math.cos(angle) * dist), margin, size - margin);
+    const tz = clamp(Math.round(size / 2 + Math.sin(angle) * dist), margin, size - margin);
+    if (isLandArea(world, config, tx, tz)) {
+      cx = tx;
+      cz = tz;
+      break;
+    }
+    if (attempt === 7) {
+      cx = tx;
+      cz = tz;
+    }
+  }
 
-  // 地面高度取周围采样最高值，避免建到水里
+  // 地面高度取采样最高值，且高于海平面 1 格（地板不泡水）
   let groundY = 0;
   for (let dz = -7; dz <= 7; dz += 7) {
     for (let dx = -7; dx <= 7; dx += 7) {
@@ -40,9 +73,9 @@ export function generateVillage(world: World, config: WorldConfig): VillageInfo 
       if (s > groundY) groundY = s;
     }
   }
-  if (groundY < seaLevel) groundY = seaLevel;
+  if (groundY < seaLevel + 1) groundY = seaLevel + 1;
 
-  // 清除区域内树木（原木/树叶）
+  // 清除区域内树木
   for (let dz = -22; dz <= 22; dz++) {
     for (let dx = -22; dx <= 22; dx++) {
       for (let y = groundY + 1; y < Math.min(config.height, groundY + 8); y++) {
@@ -52,7 +85,8 @@ export function generateVillage(world: World, config: WorldConfig): VillageInfo 
     }
   }
 
-  // 中心广场 5x5 木板
+  // 中心广场 5x5 木板（先填地）
+  flattenArea(world, cx - 2, cz - 2, 5, 5, groundY);
   for (let dz = -2; dz <= 2; dz++) {
     for (let dx = -2; dx <= 2; dx++) {
       world.setBlockDirect(cx + dx, groundY, cz + dz, Block.Planks);
@@ -71,13 +105,28 @@ export function generateVillage(world: World, config: WorldConfig): VillageInfo 
   return { centerX: cx, centerZ: cz, groundY, spawns };
 }
 
+/** 填平区域：地表以下用泥土填到 groundY-1，地表以上高于 groundY 清空 */
+function flattenArea(world: World, x0: number, z0: number, w: number, d: number, groundY: number): void {
+  for (let z = z0; z < z0 + d; z++) {
+    for (let x = x0; x < x0 + w; x++) {
+      const surf = world.getSurfaceHeight(x, z);
+      if (surf < 0) continue;
+      for (let y = surf + 1; y < groundY; y++) world.setBlockDirect(x, y, z, Block.Dirt);
+      for (let y = groundY + 1; y <= surf; y++) world.setBlockDirect(x, y, z, Block.Air);
+    }
+  }
+}
+
 const HOUSE_W = 7;
 const HOUSE_D = 6;
 
-/** 建一间小屋，返回屋内村民出生点（站在地板上） */
+/** 建一间小屋（贴地），返回屋内村民出生点（站在地板上） */
 function buildHouse(world: World, x0: number, y0: number, z0: number): VillagerSpawn {
   const W = HOUSE_W;
   const D = HOUSE_D;
+
+  // 填地：屋脚不悬浮
+  flattenArea(world, x0, z0, W, D, y0);
 
   // 清空内部与屋顶空间
   for (let z = 0; z < D; z++) {
@@ -101,7 +150,7 @@ function buildHouse(world: World, x0: number, y0: number, z0: number): VillagerS
         const isFront = z === 0;
         const isBack = z === D - 1;
         const isSide = x === 0 || x === W - 1;
-        if (!isCorner && !isFront && !isBack && !isSide) continue; // 内部
+        if (!isCorner && !isFront && !isBack && !isSide) continue;
 
         let id: number = Block.Planks;
         if (isCorner) {
@@ -127,5 +176,14 @@ function buildHouse(world: World, x0: number, y0: number, z0: number): VillagerS
     }
   }
 
-  return { x: x0 + midX + 0.5, y: y0 + 1, z: z0 + midZ + 0.5 };
+  // 出生点：屋内中心地板上方；校验为空气且非水，否则上移
+  let sx = x0 + midX + 0.5;
+  let sy = y0 + 1;
+  let sz = z0 + midZ + 0.5;
+  let guard = 0;
+  while (guard < 4 && world.getBlock(Math.floor(sx), Math.floor(sy), Math.floor(sz)) !== Block.Air) {
+    sy += 1;
+    guard++;
+  }
+  return { x: sx, y: sy, z: sz };
 }

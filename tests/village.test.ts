@@ -4,6 +4,29 @@ import { defaultWorldConfig, generateWorld } from '../src/world/terrain';
 import { generateVillage } from '../src/world/village';
 import { Block } from '../src/world/blockIds';
 
+
+describe('village ground (fix: no floating / on land)', () => {
+  it('house floors are supported by solid ground (no floating)', () => {
+    const w = new World(defaultWorldConfig(7));
+    generateWorld(w, w.config);
+    const v = generateVillage(w, w.config);
+    for (const s of v.spawns) {
+      const fx = Math.floor(s.x);
+      const fz = Math.floor(s.z);
+      const below = w.getBlock(fx, Math.floor(s.y) - 2, fz);
+      expect(below).not.toBe(Block.Air);
+      expect(below).not.toBe(Block.Water);
+    }
+  });
+
+  it('village center is on land above sea level', () => {
+    const w = new World(defaultWorldConfig(7));
+    generateWorld(w, w.config);
+    const v = generateVillage(w, w.config);
+    expect(v.groundY).toBeGreaterThanOrEqual(w.config.seaLevel + 1);
+    expect(w.getSurfaceHeight(v.centerX, v.centerZ)).toBeGreaterThanOrEqual(w.config.seaLevel);
+  });
+});
 describe('village', () => {
   it('same seed produces identical village', () => {
     const a = new World(defaultWorldConfig(42));
